@@ -3,23 +3,31 @@ locals {
 }
 
 resource "azurerm_storage_account" "fapp-operational" {
-  name                     = "sa${var.fapp_name}func${var.env_suffix}${local.location_suffix}01"
-  resource_group_name      = var.af_rg_name
-  location                 = var.af_location
-  account_kind             = "StorageV2"
-  access_tier              = "Hot"
-  account_replication_type = "LRS"
-  account_tier             = "Standard"
+  # checkov:skip=CKV_AZURE_59:This is storage account for Azure Functions in Consumption plan - access cannot be restricted
+  # checkov:skip=CKV_AZURE_33:Queue service is not used by this account
+  name                            = "sa${var.fapp_name}func${var.env_suffix}${local.location_suffix}01"
+  resource_group_name             = var.af_rg_name
+  location                        = var.af_location
+  account_kind                    = "StorageV2"
+  access_tier                     = "Hot"
+  account_replication_type        = "ZRS"
+  account_tier                    = "Standard"
+  min_tls_version                 = "TLS1_2"
+  allow_nested_items_to_be_public = false
 }
 
 resource "azurerm_storage_account" "fapp-data" {
-  name                     = "sa${var.fapp_name}data${var.env_suffix}${local.location_suffix}01"
-  resource_group_name      = var.af_rg_name
-  location                 = var.af_location
-  account_kind             = "StorageV2"
-  access_tier              = "Hot"
-  account_replication_type = "LRS"
-  account_tier             = "Standard"
+  # checkov:skip=CKV_AZURE_59:This is storage account for storing data that will accessed over Internet
+  # checkov:skip=CKV_AZURE_33:Queue service is not used by this account
+  name                            = "sa${var.fapp_name}data${var.env_suffix}${local.location_suffix}01"
+  resource_group_name             = var.af_rg_name
+  location                        = var.af_location
+  account_kind                    = "StorageV2"
+  access_tier                     = "Hot"
+  account_replication_type        = "ZRS"
+  account_tier                    = "Standard"
+  min_tls_version                 = "TLS1_2"
+  allow_nested_items_to_be_public = false
 }
 
 resource "azurerm_service_plan" "appplan" {
