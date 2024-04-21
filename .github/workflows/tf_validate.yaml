@@ -1,5 +1,7 @@
 name: terraform-validate
 run-name: Checking Terraform syntax for ${{ github.actor }} on ${{ github.ref }}
+permissions:
+  security-events: write # Needed to upload-sarif
 on: [push]
 jobs:
   check-TF-syntax:
@@ -9,13 +11,24 @@ jobs:
             working-directory: Terraform
             shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - uses: actions/checkout@v4      
       - uses: hashicorp/setup-terraform@v3
       - name: Initialize Terraform
         run: terraform init -backend=false
       - name: Validate Terraform
         id: step_validate
         run: terraform validate            
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+      - name: Run Checkov action
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with: 
+            framework: terraform
+# Upload results to GitHub Advanced Security
+      - name: Upload SARIF file
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+          category: checkov
