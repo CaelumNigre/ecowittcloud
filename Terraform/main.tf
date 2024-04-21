@@ -4,6 +4,7 @@ terraform {
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 3.83.0"
+      use_oidc = true
     }
   }
   backend "azurerm" {

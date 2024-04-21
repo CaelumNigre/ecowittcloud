@@ -19,7 +19,7 @@ jobs:
         id: step_validate
         run: terraform validate            
       - name: Terraform format check
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check -recursive -diff
       - name: Run Checkov action
         id: checkov
         uses: bridgecrewio/checkov-action@master
