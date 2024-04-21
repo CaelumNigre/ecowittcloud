@@ -48,7 +48,7 @@ module "AppInsights" {
     source = "./App Insights"
     appi_rg = azurerm_resource_group.rg.name
     appi_location = var.rg_location
-    appi_workspace =  module.LAW.workspace_id
+    appi_workspace =  module.LAW[0].workspace_id
     env_suffix = var.env_suffix
 }
 
@@ -65,8 +65,8 @@ module "AzureFunction" {
     af_location = var.rg_location    
     env_suffix = var.env_suffix
     # FIXME: will fail if optional resources are not enabled
-    appi_key = module.AppInsights.app_insights_key
-    appi_conn_string = module.AppInsights.app_insights_connection_string 
+    appi_key = module.AppInsights[0].app_insights_key
+    appi_conn_string = module.AppInsights[0].app_insights_connection_string 
 }
 
 
