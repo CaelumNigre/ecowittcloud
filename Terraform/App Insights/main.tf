@@ -8,5 +8,5 @@ resource "azurerm_application_insights" "appinsights" {
   resource_group_name = var.appi_rg
   application_type    = "web"
   retention_in_days   = 90
-  workspace_id        = var.appi_workspace  
+  workspace_id        = var.appi_workspace
 }

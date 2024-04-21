@@ -1,14 +1,14 @@
-variable "af_rg_name" {  
+variable "af_rg_name" {
 }
 
-variable "af_location" {    
+variable "af_location" {
 }
 
 variable "fapp_name" {
-    default = "ecowitt"
+  default = "ecowitt"
 }
 
-variable "env_suffix" {    
+variable "env_suffix" {
 }
 
 variable "appi_key" {

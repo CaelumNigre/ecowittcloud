@@ -2,14 +2,14 @@ variable "appi_name" {
   default = "ecowitt"
 }
 
-variable "appi_location" {  
+variable "appi_location" {
 }
 
-variable "appi_rg" {  
+variable "appi_rg" {
 }
 
-variable "env_suffix" {    
+variable "env_suffix" {
 }
 
-variable "appi_workspace" {  
+variable "appi_workspace" {
 }

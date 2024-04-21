@@ -2,12 +2,12 @@ variable "law_name" {
   default = "ecowitt"
 }
 
-variable "law_location" {  
+variable "law_location" {
 }
 
-variable "law_rg" {  
+variable "law_rg" {
 }
 
-variable "env_suffix" {    
+variable "env_suffix" {
 }
 
