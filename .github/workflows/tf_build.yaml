@@ -16,9 +16,11 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ vars.TF_BACKEND.subscription_id }}
     # Azure tenant ID in which TF backend (state file) is located
         ARM_TENANT_ID: ${{ vars.TF_BACKEND.tenant_id }}
+        TEST_ID: "aaa"
+        TEST_ID2: ${{ vars.TF_BACKEND }}
     steps:
       - uses: actions/checkout@v4
-      - run: echo ${ARM_CLIENT_ID}    
+      - run: echo ${TEST_ID}    
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
