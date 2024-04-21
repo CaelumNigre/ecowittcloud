@@ -4,6 +4,7 @@ run-name: Build Terraform plan for ${{ github.actor }} on ${{ github.ref }}
 jobs:
   build-TF-plan:
     runs-on: windows-latest
+    environment: test
     defaults:
         run:  
             working-directory: Terraform
