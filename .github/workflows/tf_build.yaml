@@ -26,4 +26,12 @@ jobs:
       - uses: hashicorp/setup-terraform@v3  
       - name: Initialize Terraform
         run: terraform init -backend-config="resource_group_name=${TF_RG_NAME}" -backend-config="storage_account_name=${TF_SA_NAME}" 
+      - name: Run Terraform plan
+        run: terraform plan -out=tfplan
+      - name: Store Terraform plan file for deployment
+        uses: actions/upload-artifact@4
+        with:
+            name: TF-plan   
+            path: Terraform
+
       
