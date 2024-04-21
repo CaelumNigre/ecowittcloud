@@ -1,0 +1,19 @@
+name: terraform-validate
+run-name: Checking Terraform syntax for ${{ github.actor }} on ${{ github.ref }}
+on: [push]
+jobs:
+  check-TF-syntax:
+    runs-on: windows-latest
+    defaults:
+        run:  
+            working-directory: Terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: hashicorp/setup-terraform@v3
+      - name: Initialize Terraform
+        run: terraform init -backend=false
+      - name: Validate Terraform
+        run: terraform validate
