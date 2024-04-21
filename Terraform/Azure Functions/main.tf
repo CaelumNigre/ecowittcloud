@@ -5,7 +5,7 @@ locals {
 resource "azurerm_storage_account" "fapp-operational" {
   # checkov:skip=CKV_AZURE_59:This is storage account for Azure Functions in Consumption plan - access cannot be restricted
   # checkov:skip=CKV_AZURE_33:Queue service is not used by this account
-  # checkov:skip=CKV_AZURE_26:ZRS is good enough for me
+  # checkov:skip=CKV_AZURE_206:ZRS is good enough for me
   # checkov:skip=CKV2_AZURE_41:FIXME need to better understanding of the SAS expiration setting
   # checkov:skip=CKV2_AZURE_33:This is storage account for Azure Functions in Consumption plan - access cannot be restricted
   # checkov:skip=CKV2_AZURE_38:Soft delete not required
@@ -26,7 +26,7 @@ resource "azurerm_storage_account" "fapp-data" {
   # checkov:skip=CKV_AZURE_59:This is storage account for storing data that will accessed over Internet
   # checkov:skip=CKV2_AZURE_33:This is storage account for storing data that will accessed over Internet
   # checkov:skip=CKV_AZURE_33:Queue service is not used by this account
-  # checkov:skip=CKV_AZURE_26:ZRS is good enough for me
+  # checkov:skip=CKV_AZURE_206:ZRS is good enough for me
   # checkov:skip=CKV2_AZURE_41:FIXME need to better understanding of the SAS expiration setting
   # checkov:skip=CKV2_AZURE_38:Soft delete not required
   # checkov:skip=CKV2_AZURE_1:Account does not contain sensitive data
