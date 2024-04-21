@@ -18,8 +18,7 @@ jobs:
         ARM_TENANT_ID: ${{ vars.TF_BACKEND.tenant_id }}
     steps:
       - uses: actions/checkout@v4
-      - run: echo ${ARM_CLIENT_ID}
-      - run: echo ${ARM_TENANT_ID}
+      - run: echo ${ARM_CLIENT_ID}    
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
