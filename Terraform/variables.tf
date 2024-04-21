@@ -2,8 +2,7 @@ variable "rg_location" {
     default = "westeurope"
 }
 
-variable "rg_basename"
-{
+variable "rg_basename" {
     default = "ecowitt"
 }
 
