@@ -3,8 +3,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.83.0"
-      use_oidc = true
+      version = "~> 3.83.0"      
     }
   }
   backend "azurerm" {
@@ -17,17 +16,18 @@ terraform {
 }
 
 provider "azurerm" {
-  features {
+    use_oidc = true
+    features {
 
     application_insights {
-      disable_generated_rule = true
+        disable_generated_rule = true
     }
 
     resource_group {
-      prevent_deletion_if_contains_resources = false      
+        prevent_deletion_if_contains_resources = false      
     }
 
-  }
+    }
 }
 
 locals {
