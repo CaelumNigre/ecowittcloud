@@ -9,19 +9,13 @@ jobs:
         run:  
             working-directory: Terraform
             shell: bash
-    env:
-    # Client ID used to access TF backend (state file) 
-        ARM_CLIENT_ID: ${{ vars.TF_BACKEND.client_id }}
-    # Azure subscription ID in which TF backend (state file) is located
-        ARM_SUBSCRIPTION_ID: ${{ vars.TF_BACKEND.subscription_id }}
-    # Azure tenant ID in which TF backend (state file) is located
-        ARM_TENANT_ID: ${{ vars.TF_BACKEND.tenant_id }}
-        TEST_ID: "aaa"
-        TEST_ID2: ${{ vars.TF_BACKEND }}
+    env:    
+    # JSON holding all three environmental variables needed by Azure backend configuration (tenant id, subscription id and client id)
+        TF_BACKEND: ${{ vars.TF_BACKEND }}
     steps:
       - uses: actions/checkout@v4
       - name: Extract scalar variables from JSON variable
-        run: echo "$TEST_ID2" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
+        run: echo "$TF_BACKEND" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
