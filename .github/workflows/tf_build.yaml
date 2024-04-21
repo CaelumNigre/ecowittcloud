@@ -29,7 +29,7 @@ jobs:
       - name: Run Terraform plan
         run: terraform plan -out=tfplan
       - name: Store Terraform plan file for deployment
-        uses: actions/upload-artifact@4
+        uses: actions/upload-artifact@v4
         with:
             name: TF-plan   
             path: Terraform
