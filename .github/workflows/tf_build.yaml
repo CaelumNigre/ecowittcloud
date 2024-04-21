@@ -1,5 +1,5 @@
 name: terraform-build
-on: workflow_dispatch
+on: [push]
 run-name: Build Terraform plan for ${{ github.actor }} on ${{ github.ref }}
 jobs:
   build-TF-plan:
