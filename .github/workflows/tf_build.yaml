@@ -20,7 +20,8 @@ jobs:
         TEST_ID2: ${{ vars.TF_BACKEND }}
     steps:
       - uses: actions/checkout@v4
-      - run: echo ${TEST_ID}    
+      - name: Extract scalar variables from JSON variable
+        run: echo "$TEST_ID2" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
