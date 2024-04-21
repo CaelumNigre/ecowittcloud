@@ -1,4 +1,4 @@
-name: terraform-validate
+name: terraform-build
 on: workflow_dispatch
 run-name: Build Terraform plan for ${{ github.actor }} on ${{ github.ref }}
 jobs:
