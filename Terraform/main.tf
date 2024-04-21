@@ -10,6 +10,7 @@ terraform {
     container_name       = "terraform"
     key                  = "terraform.tfstate"
     use_oidc             = true
+    skip_provider_registration = true
   }
   required_version = ">= 1.1.0"
 }
