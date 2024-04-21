@@ -5,7 +5,7 @@ permissions:
 on: [push]
 jobs:
   check-TF-syntax:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     defaults:
         run:  
             working-directory: Terraform
