@@ -7,7 +7,9 @@ terraform {
     }
   }
   backend "azurerm" {
-    
+    container_name       = "terraform"
+    key                  = "terraform.tfstate"
+    use_oidc             = true
   }
   required_version = ">= 1.1.0"
 }
