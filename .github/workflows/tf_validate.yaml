@@ -2,7 +2,10 @@ name: terraform-validate
 run-name: Checking Terraform syntax for ${{ github.actor }} on ${{ github.ref }}
 permissions:
   security-events: write # Needed to upload-sarif
-on: [push]
+on:
+  push:
+    paths: 
+    - Terraform
 jobs:
   check-TF-syntax:
     runs-on: ubuntu-latest
