@@ -1,0 +1,34 @@
+name: terraform-validate
+run-name: Checking Terraform syntax for ${{ github.actor }} on ${{ github.ref }}
+permissions:
+  security-events: write # Needed to upload-sarif
+on: [push]
+jobs:
+  check-TF-syntax:
+    runs-on: ubuntu-latest
+    defaults:
+        run:  
+            working-directory: Terraform
+            shell: bash
+    steps:
+      - uses: actions/checkout@v4      
+      - uses: hashicorp/setup-terraform@v3
+      - name: Initialize Terraform
+        run: terraform init -backend=false
+      - name: Validate Terraform
+        id: step_validate
+        run: terraform validate            
+      - name: Terraform format check
+        run: terraform fmt -check -recursive -diff
+      - name: Run Checkov action
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with: 
+            framework: terraform
+# Upload results to GitHub Advanced Security
+      - name: Upload SARIF file
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+          category: checkov
