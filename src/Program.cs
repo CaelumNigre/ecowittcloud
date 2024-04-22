@@ -16,4 +16,5 @@ string ReadJsonFromFile(string fName)
 
 var s = ReadJsonFromFile("historical_data.json");
 var x = new EcowittInputData(s);
+x.ProcessInput();
 Thread.Sleep(2000);
