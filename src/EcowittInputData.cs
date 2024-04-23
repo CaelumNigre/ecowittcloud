@@ -7,7 +7,7 @@ using System.Text.Json;
 namespace Ecowitt
 {
 
-	public class EcowittInputData
+	internal class EcowittInputData
 	{
         private class RawChannelMeta : IChannelMetaData
         {
@@ -20,15 +20,17 @@ namespace Ecowitt
             public string ChannelName { get; set; } = string.Empty;
 
             public List<string> SensorNames { get; set; } = new List<string>();
+
+            public ChannelTypes ChannelType { get; private set; } = ChannelTypes.Meta;
         };
 
         private string _rawData;
-        private Dictionary<string, DataChannel> _channelsList;
+        private Dictionary<string, InputDataChannel> _channelsList;
 
 		public EcowittInputData(string rawData)
 		{
 			_rawData = rawData;
-            _channelsList = new Dictionary<string, DataChannel>();
+            _channelsList = new Dictionary<string, InputDataChannel>();
 		}
 
 		public void ProcessInput()
@@ -43,6 +45,7 @@ namespace Ecowitt
             bool seriesLevel = false;
             string? currentChannel = null;
             string? currentSensor = null;
+            string? sensorUnit = null;
             List<(string?, string?)>? dataseries = null;
             int CurrentLevel = 0;            
             while (reader.Read())
@@ -86,10 +89,11 @@ namespace Ecowitt
                             {
                                 seriesLevel = false;
 #pragma warning disable CS8604 // Possible null reference argument.
-                                DataSeries series = new DataSeries(currentSensor, dataseries);
+                                DataSeries series = new DataSeries(sensorUnit, dataseries);
                                 _channelsList[currentChannel].AddSensorData(currentSensor, series);
 #pragma warning restore CS8604 // Possible null reference argument.
                                 dataseries = null;
+                                sensorUnit = null;
                             }
                             CurrentLevel--;
                             break;   
@@ -99,6 +103,11 @@ namespace Ecowitt
                         if (!inDataSection && CurrentLevel == 1 && reader.ValueTextEquals("data"))
                         {
                             inDataSection = true;
+                        }
+                        if (sensorDataLevel && CurrentLevel == 4 && reader.ValueTextEquals("unit"))
+                        {
+                            if (!reader.Read()) throw new InvalidDataException("Unexpected end of data");
+                            sensorUnit = reader.GetString();                            
                         }
                         if (sensorDataLevel && CurrentLevel == 4 && reader.ValueTextEquals("list"))
                         {
@@ -125,7 +134,7 @@ namespace Ecowitt
                             // new channel in data
                             var s = reader.GetString();
                             if (s == null) throw new ArgumentNullException("Channel name is null");
-                            var c = new DataChannel(s);                            
+                            var c = new InputDataChannel(s);                            
                             currentChannel = s;
                             _channelsList.Add(s,c);
                         }
@@ -139,10 +148,18 @@ namespace Ecowitt
 			var result = new List<DataChannelMetaData>();            
             foreach (var channel in _channelsList)
             {
-                
+                var meta = new DataChannelMetaData(channel.Value);
+                result.Add(meta);
             }
 			return result;
 		}
+
+        public InputDataChannel? GetChannel(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentNullException("Channel name cannot be empty");
+            if (!_channelsList.ContainsKey(name)) return null;
+            return _channelsList[name];
+        }
 
 	}
 }
