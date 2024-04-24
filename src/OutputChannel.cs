@@ -24,6 +24,7 @@ namespace Ecowitt
         
         private Dictionary<string, string[]>? dataColumns = null;
         private string[]? timeRows = null;
+        private int rowCount = -1;
         private string metaDataFileName;
 
         public OutputChannel(string channelName) {
@@ -38,7 +39,8 @@ namespace Ecowitt
         public void InitChannel()
         {
             timeRows = null;
-            dataColumns = null;            
+            dataColumns = null;
+            rowCount = -1;
             try
             {
                 using (StreamReader sr = new StreamReader(metaDataFileName))
@@ -75,7 +77,7 @@ namespace Ecowitt
             if (channel == null || channel.Data == null || !channel.Data.Any()) return;
             if (timeRows == null)
             {           
-                timeRows = new string[channel.Data.Values.First().Data?.Count ?? 0];
+                timeRows = new string[channel.Data.Values.First().Data?.Count ?? 0];                
                 dataColumns = new Dictionary<string, string[]>();                
                 bool firstDataColumn = true;
                 string firstColumnKey = "";
@@ -91,15 +93,22 @@ namespace Ecowitt
                         foreach (var value in sensor.Value.Data)
                         {
                             if (string.IsNullOrWhiteSpace(value.Item1)) throw new NullReferenceException("Null timestamp in dataset");
+                            uint ts = 0;
+                            if (!UInt32.TryParse(value.Item1, out ts)) throw new InvalidDataException("Timestamp format error");
+                            if (ts <= LastTimeStamp) continue;
                             timeRows[i] = value.Item1;
                             dataColumns[columnName][i] = value.Item2 ?? "";
                             i++;
                         }
+                        rowCount = i;
                     }
                     else
                     {
                         foreach (var value in sensor.Value.Data)
                         {
+                            uint ts = 0;
+                            if (!UInt32.TryParse(value.Item1, out ts)) throw new InvalidDataException("Timestamp format error");
+                            if (ts <= LastTimeStamp) continue;
                             if (timeRows[i] != value.Item1)
                             {
                                 var msg = string.Format("Timestamp value in sensor {0} at position {1} differs from sensor {2} timestamp",
@@ -111,7 +120,7 @@ namespace Ecowitt
                         }
                     }                    
                 }
-                LastTimeStamp = UInt32.Parse(timeRows.Last());
+                if (rowCount>0) LastTimeStamp = UInt32.Parse(timeRows[rowCount-1]);
             }
             else
             {
@@ -124,16 +133,19 @@ namespace Ecowitt
             if (timeRows == null) throw new InvalidOperationException("No data added to channel");
             if (dataColumns == null || !dataColumns.Any()) throw new InvalidOperationException("Empty data columns");
             using (StreamWriter sw = new StreamWriter(ChannelName, 
-                new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Create }))
+                new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Append }))
             {
                 StringBuilder sb = new StringBuilder();
-                sb.Append(@"""Timestamp""");
-                foreach (var column in dataColumns)
+                if (sw.BaseStream.Length == 0)
                 {
-                    sb.Append(",\"" + column.Key + "\"");
+                    sb.Append(@"""Timestamp""");
+                    foreach (var column in dataColumns)
+                    {
+                        sb.Append(",\"" + column.Key + "\"");
+                    }
+                    sw.WriteLine(sb.ToString());
                 }
-                sw.WriteLine(sb.ToString());                                
-                for (int i = 0; i<timeRows.Length; i++) 
+                for (int i = 0; i<rowCount; i++) 
                 {
                     sb.Clear();
                     sb.Append("\"" + timeRows[i] + "\"");

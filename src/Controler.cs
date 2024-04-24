@@ -9,8 +9,8 @@ namespace Ecowitt
 {
     internal class Controler
     {
-
         private Configuration _configuration;
+        static readonly string[] data_samples = ["historical_data.json", "historical_data_2.json"];
 
         public Controler() { 
             _configuration = new Configuration();
@@ -21,34 +21,39 @@ namespace Ecowitt
             List<DataChannelMetaData> configuredchannels = _configuration.GetConfiguredInputChannels();
             List<DataChannelMetaData> dataInputChannels = new List<DataChannelMetaData>();
             List<DataChannelMetaData> channelsToBeProcessed = new List<DataChannelMetaData>();
-            var s = ReadJsonFromFile("historical_data.json");
-            var inputData = new EcowittInputData(s);
-            try
-            {                
-                inputData.ProcessInput();
-                dataInputChannels = inputData.GetChannels();
-            }
-            catch (Exception ex)
+            
+
+            for (int i = 0; i < 2; i++)
             {
-                Console.WriteLine(ex.Message);
-                return;
-            }
-            foreach (var channel in configuredchannels)
-            {
-                var inputChannel = dataInputChannels.Where(x => x.ChannelName == channel.ChannelName).FirstOrDefault();
-                if (inputChannel != null)
+                var s = ReadJsonFromFile(data_samples[i]);
+                var inputData = new EcowittInputData(s);
+                try
                 {
-                    channelsToBeProcessed.Add(inputChannel);
+                    inputData.ProcessInput();
+                    dataInputChannels = inputData.GetChannels();
                 }
-            }
-            foreach (var channel in channelsToBeProcessed)
-            {
-                var outputChannel = new OutputChannel(channel.ChannelName);
-                outputChannel.InitChannel();
-                var channelData = inputData.GetChannel(channel.ChannelName);
-                if (channelData == null) continue;
-                outputChannel.AddData(channelData);
-                outputChannel.SaveData();
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    return;
+                }
+                foreach (var channel in configuredchannels)
+                {
+                    var inputChannel = dataInputChannels.Where(x => x.ChannelName == channel.ChannelName).FirstOrDefault();
+                    if (inputChannel != null)
+                    {
+                        channelsToBeProcessed.Add(inputChannel);
+                    }
+                }
+                foreach (var channel in channelsToBeProcessed)
+                {
+                    var outputChannel = new OutputChannel(channel.ChannelName);
+                    outputChannel.InitChannel();
+                    var channelData = inputData.GetChannel(channel.ChannelName);
+                    if (channelData == null) continue;
+                    outputChannel.AddData(channelData);
+                    outputChannel.SaveData();
+                }
             }
         }
 

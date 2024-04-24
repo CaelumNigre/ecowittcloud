@@ -11,6 +11,9 @@
     <Content Include="..\sample_data\historical_data.json" Link="historical_data.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="..\sample_data\historical_data_2.json" Link="historical_data_2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
