@@ -5,7 +5,7 @@ using System.Xml.Linq;
 
 namespace Ecowitt
 {
-    public enum ChannelTypes { Invalid, Input, Blob, Table, Meta };
+    public enum ChannelTypes { Invalid, Input, Blob, Table, Meta, File };
 
 	public interface IChannelMetaData
 	{
