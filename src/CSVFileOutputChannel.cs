@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Ecowitt
 {
-    internal class OutputChannel : IChannelMetaData
+    internal class CSVFileOutputChannel : IChannelMetaData
     {
         const string METADATAFILESUFFIX = "metadata";
 
@@ -21,13 +21,16 @@ namespace Ecowitt
         public ChannelTypes ChannelType { get; private set; } = ChannelTypes.Blob;
 
         public uint LastTimeStamp { get; private set; }
+        public uint FirstTimeStamp { get ; private set; }
         
         private Dictionary<string, string[]>? dataColumns = null;
         private string[]? timeRows = null;
         private int rowCount = -1;
         private string metaDataFileName;
+        private uint OriginalLastTimeStamp = 0;
+        
 
-        public OutputChannel(string channelName) {
+        public CSVFileOutputChannel(string channelName) {
             if (string.IsNullOrWhiteSpace(channelName)) throw new ArgumentNullException("Channel name can't be empty");
             ChannelStartDate = 0;
             ChannelEndDate = 0;
@@ -49,6 +52,7 @@ namespace Ecowitt
                     uint x = 0;
                     if (!UInt32.TryParse(ts, out x)) throw new InvalidDataException();
                     LastTimeStamp = x;
+                    OriginalLastTimeStamp = LastTimeStamp;
                 }
             }
             catch (Exception ex)
@@ -60,6 +64,7 @@ namespace Ecowitt
                         new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Create} ))
                     {
                         LastTimeStamp = 0;
+                        OriginalLastTimeStamp = 0;
                         sw.WriteLine("0");
                         sw.Close();
                     }
@@ -120,7 +125,11 @@ namespace Ecowitt
                         }
                     }                    
                 }
-                if (rowCount>0) LastTimeStamp = UInt32.Parse(timeRows[rowCount-1]);
+                if (rowCount > 0)
+                {
+                    LastTimeStamp = UInt32.Parse(timeRows[rowCount - 1]);
+                    FirstTimeStamp = UInt32.Parse(timeRows[0]);
+                }
             }
             else
             {
@@ -132,30 +141,75 @@ namespace Ecowitt
         {
             if (timeRows == null) throw new InvalidOperationException("No data added to channel");
             if (dataColumns == null || !dataColumns.Any()) throw new InvalidOperationException("Empty data columns");
-            using (StreamWriter sw = new StreamWriter(ChannelName, 
-                new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Append }))
+            DateTime dataStartTime = Controler.UnixTimeStampToDateTime(FirstTimeStamp);
+            DateTime originalDataStartTime = Controler.UnixTimeStampToDateTime(OriginalLastTimeStamp);            
+            int year = dataStartTime.Year;
+            int firstRowOfNextYear = -1;
+            if (year == originalDataStartTime.Year)
             {
-                StringBuilder sb = new StringBuilder();
-                if (sw.BaseStream.Length == 0)
+                string fileName = string.Format("{0}_{1}", ChannelName, year);
+                using (StreamWriter sw = new StreamWriter(fileName,
+                    new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Append }))
                 {
+                    StringBuilder sb = new StringBuilder();
+                    if (sw.BaseStream.Length == 0)
+                    {
+                        sb.Append(@"""Timestamp""");
+                        foreach (var column in dataColumns)
+                        {
+                            sb.Append(",\"" + column.Key + "\"");
+                        }
+                        sw.WriteLine(sb.ToString());
+                    }
+                    for (int i = 0; i < rowCount; i++)
+                    {
+                        uint currentRowTimestamp = UInt32.Parse(timeRows[i]);
+                        DateTime currentRowTime = Controler.UnixTimeStampToDateTime(currentRowTimestamp);
+                        if (currentRowTime.Year == year)
+                        {
+                            sb.Clear();
+                            sb.Append("\"" + timeRows[i] + "\"");
+                            foreach (var column in dataColumns)
+                            {
+                                sb.Append(",\"" + column.Value[i] + "\"");
+                            }
+                            sw.WriteLine(sb.ToString());
+                        }
+                        else
+                        {
+                            firstRowOfNextYear = i;
+                            break;
+                        }                            
+                    }
+                    sw.Flush();
+                }
+            }
+            if (year > originalDataStartTime.Year || firstRowOfNextYear > 0)
+            {
+                if (firstRowOfNextYear > 0) year = year + 1;
+                string fileName = string.Format("{0}_{1}", ChannelName, year);
+                using (StreamWriter sw = new StreamWriter(fileName,
+                    new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.CreateNew }))
+                {
+                    StringBuilder sb = new StringBuilder();                    
                     sb.Append(@"""Timestamp""");
                     foreach (var column in dataColumns)
                     {
                         sb.Append(",\"" + column.Key + "\"");
                     }
-                    sw.WriteLine(sb.ToString());
-                }
-                for (int i = 0; i<rowCount; i++) 
-                {
-                    sb.Clear();
-                    sb.Append("\"" + timeRows[i] + "\"");
-                    foreach (var column in dataColumns)
+                    sw.WriteLine(sb.ToString());                    
+                    for (int i = 0; i < rowCount; i++)
                     {
-                        sb.Append(",\"" + column.Value[i] + "\"");
+                        sb.Clear();
+                        sb.Append("\"" + timeRows[i] + "\"");
+                        foreach (var column in dataColumns)
+                        {
+                            sb.Append(",\"" + column.Value[i] + "\"");
+                        }
+                        sw.WriteLine(sb.ToString());                    
                     }
-                    sw.WriteLine(sb.ToString());
+                    sw.Flush();
                 }
-                sw.Flush();
             }
             using (StreamWriter sw = new StreamWriter(metaDataFileName,
                         new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Truncate }))

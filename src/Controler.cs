@@ -16,6 +16,13 @@ namespace Ecowitt
             _configuration = new Configuration();
         }
 
+        public static DateTime UnixTimeStampToDateTime(uint unixTimeStamp)
+        {            
+            DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            dateTime = dateTime.AddSeconds(unixTimeStamp).ToUniversalTime();
+            return dateTime;
+        }
+
         public void RunProcessing()
         {
             List<DataChannelMetaData> configuredchannels = _configuration.GetConfiguredInputChannels();
@@ -47,7 +54,7 @@ namespace Ecowitt
                 }
                 foreach (var channel in channelsToBeProcessed)
                 {
-                    var outputChannel = new OutputChannel(channel.ChannelName);
+                    var outputChannel = new CSVFileOutputChannel(channel.ChannelName);
                     outputChannel.InitChannel();
                     var channelData = inputData.GetChannel(channel.ChannelName);
                     if (channelData == null) continue;
