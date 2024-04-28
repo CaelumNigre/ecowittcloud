@@ -20,7 +20,7 @@ provider "azurerm" {
   features {
 
     application_insights {
-      disable_generated_rule = false
+      disable_generated_rule = true
     }
 
     resource_group {
