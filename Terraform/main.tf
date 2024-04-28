@@ -7,16 +7,16 @@ terraform {
     }
   }
   backend "azurerm" {
-    container_name             = "terraform"
-    key                        = "terraform.tfstate"
-    use_oidc                   = true
-    skip_provider_registration = true
+    container_name = "terraform"
+    key            = "terraform.tfstate"
+    use_oidc       = true
   }
   required_version = ">= 1.1.0"
 }
 
 provider "azurerm" {
-  use_oidc = true
+  use_oidc                   = true
+  skip_provider_registration = true
   features {
 
     application_insights {
@@ -31,7 +31,7 @@ provider "azurerm" {
 }
 
 locals {
-  location_suffix = var.rg_location == "westeurope" ? "euw" : "other"
+  location_suffix = var.rg_location == "westeurope" ? "euw" : var.rg_location == "northeurope" ? "eun" : "other"
 }
 
 # resource group for resources deployment  
