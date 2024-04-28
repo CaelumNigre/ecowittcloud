@@ -147,9 +147,8 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: tfplan
-    - name: Prepare folders
-      run: |
-        ls -lR .terraform
+    - name: Reinstate executables permissions
+      run: |        
         chmod u+x -R .terraform
     # Terraform Apply
     - name: Terraform Apply
