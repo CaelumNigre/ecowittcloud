@@ -11,7 +11,7 @@ namespace Ecowitt
     public enum TimestampFormats { Timestamp, UTC };
     public enum ConfigurationContext { Cmdline, AzureFunction };
 
-    internal class EcowittDevice
+    internal class EcowittDeviceConfiguration
     {
         public string MAC { get; set; } = "00:00:00:00:00:00";
         public int PollRateMinutes { get; set; } = 60;
@@ -22,6 +22,50 @@ namespace Ecowitt
         public int RainfallUnit { get; set; } = 12;
         public int SolarIrradianceUnit { get; set; } = 16;
         public OutputChannelConfiguration OutputChannel { get; set; } = new OutputChannelConfiguration();
+
+        public bool Validate(bool validateOutputChannels, out string errorMessage)
+        {
+            errorMessage = "";
+            if (MAC == "00:00:00:00:00:00")
+            {
+                errorMessage = "MAC address not defined for device";
+                return false;
+            }
+            if (PollRateMinutes < 10 || PollRateMinutes > 10080)
+            {
+                errorMessage = "Invalid device poll rate";
+                return false;
+            }
+            if (ConfiguredChannels == null || !ConfiguredChannels.Any())
+            {
+                errorMessage = "No channels defined for device";
+                return false;
+            }
+            if (validateOutputChannels)
+            {
+                if (OutputChannel == null)
+                {
+                    errorMessage = "No output channel defined for device";
+                    return false;
+                }
+                if (!Enum.TryParse(typeof(ChannelTypes), OutputChannel.Type, out var channelType))
+                {
+                    errorMessage = "Invalid channel type: " + OutputChannel.Type;
+                    return false;
+                }
+                if (OutputChannel.ID < 0)
+                {
+                    errorMessage = "Invalid channel ID";
+                    return false;
+                }
+                if (!Enum.TryParse(typeof(TimestampFormats), OutputChannel.TimeStampFormat, out var timestampFormat))
+                {
+                    errorMessage = "Invalid timestamp format: " + OutputChannel.TimeStampFormat;
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     internal class OutputChannelConfiguration
@@ -41,7 +85,7 @@ namespace Ecowitt
 
     internal class ConfigurationData
     {
-        public List<EcowittDevice> Devices { get; set; } = new List<EcowittDevice>();
+        public List<EcowittDeviceConfiguration> Devices { get; set; } = new List<EcowittDeviceConfiguration>();
         public List<OutputChannelDefinition> OutputChannels { get; set; } = new List<OutputChannelDefinition>();
     }
 
@@ -120,41 +164,7 @@ namespace Ecowitt
                 }
                 foreach (var device in config.Devices)
                 {
-                    if (device.MAC == "00:00:00:00:00:00")
-                    {
-                        errorMessage = "MAC address not defined for device";
-                        return false;
-                    }
-                    if (device.PollRateMinutes < 10 || device.PollRateMinutes > 10080 )
-                    {
-                        errorMessage = "Invalid device poll rate";
-                        return false;
-                    }
-                    if (device.ConfiguredChannels == null || !device.ConfiguredChannels.Any())
-                    {
-                        errorMessage = "No channels defined for device";
-                        return false;
-                    }
-                    if (device.OutputChannel == null)
-                    {
-                        errorMessage = "No output channel defined for device";
-                        return false;
-                    }
-                    if (!Enum.TryParse(typeof(ChannelTypes), device.OutputChannel.Type, out var channelType))
-                    {
-                        errorMessage = "Invalid channel type: " + device.OutputChannel.Type;
-                        return false;
-                    }
-                    if (device.OutputChannel.ID < 0)
-                    {
-                        errorMessage = "Invalid channel ID";
-                        return false;
-                    }
-                    if (!Enum.TryParse(typeof(TimestampFormats), device.OutputChannel.TimeStampFormat, out var timestampFormat))
-                    {
-                        errorMessage = "Invalid timestamp format: " + device.OutputChannel.TimeStampFormat;
-                        return false;
-                    }
+                    if (!device.Validate(true, out  errorMessage)) return false;                                        
 //FIXME add validation of channel ID with channel definitions
                 }
                 ConfigurationSettings = config;
@@ -166,23 +176,6 @@ namespace Ecowitt
             }
             return true;
         }
-
-        public List<DataChannelMetaData> GetConfiguredInputChannels()
-        {
-            var result = new List<DataChannelMetaData>();
-            DataChannelMetaData a = new DataChannelMetaData("indoor");
-            result.Add(a);
-            a = new DataChannelMetaData("outdoor");
-            result.Add(a);
-            a = new DataChannelMetaData("rainfall");
-            result.Add(a);
-            a = new DataChannelMetaData("wind");
-            result.Add(a);
-            a = new DataChannelMetaData("lightning");
-            result.Add(a);
-            return result;
-        }
-
 
     }
 }

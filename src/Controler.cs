@@ -39,7 +39,8 @@ namespace Ecowitt
         public void RunProcessing()
         {
             if (!hasConfig) throw new InvalidOperationException("No configuration to start processing");
-            List<DataChannelMetaData> configuredchannels = _configuration.GetConfiguredInputChannels();
+
+            List<string> configuredchannels = _configuration.ConfigurationSettings.Devices[0].ConfiguredChannels;
             List<DataChannelMetaData> dataInputChannels = new List<DataChannelMetaData>();
             List<DataChannelMetaData> channelsToBeProcessed = new List<DataChannelMetaData>();
             
@@ -58,12 +59,11 @@ namespace Ecowitt
                     Console.WriteLine(ex.Message);
                     return;
                 }
-                foreach (var channel in configuredchannels)
-                {
-                    var inputChannel = dataInputChannels.Where(x => x.ChannelName == channel.ChannelName).FirstOrDefault();
-                    if (inputChannel != null)
+                foreach (var channel in dataInputChannels)
+                {                    
+                    if (configuredchannels.Contains(channel.ChannelName))
                     {
-                        channelsToBeProcessed.Add(inputChannel);
+                        channelsToBeProcessed.Add(channel);
                     }
                 }
                 foreach (var channel in channelsToBeProcessed)
