@@ -151,4 +151,5 @@ jobs:
     # Terraform Apply
     - name: Terraform Apply
       run: |        
+        chmod u+x -R .terraform
         terraform apply tfplan
