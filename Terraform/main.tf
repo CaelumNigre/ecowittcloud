@@ -12,7 +12,7 @@ terraform {
     use_oidc                   = true
     skip_provider_registration = true
   }
-  required_version = ">= 1.1.0"
+  required_version = ">= 1.1.0" 
 }
 
 provider "azurerm" {
