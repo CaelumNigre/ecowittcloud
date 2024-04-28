@@ -1,4 +1,4 @@
-name: 'Terraform Plan and Apply'
+name: 'Terraform Build and Deploy'
 # workflow based on reference implementation from: https://github.com/Azure-Samples/terraform-github-actions 
 
 on:
@@ -19,10 +19,6 @@ permissions:
   id-token: write
   contents: read
   pull-requests: write
-defaults:
-    run:  
-        working-directory: Terraform
-        shell: bash
 
 #These environment variables are used by the terraform azure provider to setup OIDD authenticate. 
 env:
@@ -32,6 +28,10 @@ env:
 
 jobs:
   terraform-plan:
+    defaults:
+        run:  
+            working-directory: Terraform
+            shell: bash
     name: 'Terraform Plan'
     runs-on: ubuntu-latest
     env:
@@ -132,9 +132,7 @@ jobs:
     needs: [terraform-plan]
     
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
-      uses: actions/checkout@v4
+    # Checkout the repository to the GitHub Actions runner    
     - name: Extract scalar variables from JSON variable
       run: echo "$TF_BACKEND" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
@@ -153,4 +151,5 @@ jobs:
 
     # Terraform Apply
     - name: Terraform Apply
-      run: terraform apply tfplan
+      run: |        
+        terraform apply tfplan
