@@ -31,7 +31,7 @@ provider "azurerm" {
 }
 
 locals {
-  location_suffix = var.rg_location == "westeurope" ? "euw" : "other"
+  location_suffix = var.rg_location == "westeurope" ? "euw" : var.rg_location == "northeurope" ? "eun" : "other"
 }
 
 # resource group for resources deployment  
