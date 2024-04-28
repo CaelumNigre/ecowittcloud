@@ -6,6 +6,7 @@ on:
   push:
     paths: 
     - Terraform/**
+  workflow_dispatch:
 jobs:
   check-TF-syntax:
     runs-on: ubuntu-latest
