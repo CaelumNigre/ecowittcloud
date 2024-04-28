@@ -1,8 +1,8 @@
 {
   "Devices": [
     {
-      "MAC": "C8:C9:A3:1C:08:3A",
-      "PollRateMinutes": 60,
+      "MAC": "00:00:00:00:00:00",
+      "PollRateMinutes":  60,
       "ConfiguredChannels": [
         "indoor",
         "outdoor",
@@ -13,7 +13,7 @@
       "PressureUnit": 3,
       "WindSpeedUnit": 6,
       "RainfallUnit": 12,
-      "SolarIrradianceUnit": 16,
+      "SolarIrradianceUnit":  16,
       "OutputChannel": {
         "Type": "Blob",
         "ID": 1,
@@ -24,7 +24,7 @@
       }
     },
     {
-      "MAC": "C8:C9:A3:1C:08:3A",
+      "MAC": "00:00:00:00:00:00",
       "ConfiguredChannels": [
         "pressure",
         "soil_ch1"
@@ -36,7 +36,17 @@
       }
     }
   ],
-  "OutputChannels": [    
+  "OutputChannels": [
+    {
+      "Type": "Blob",
+      "ID": 1,
+      "URL": "https://"
+    },
+    {
+      "Type": "Table",
+      "ID": 1,
+      "URL": "https://"
+    },
     {
       "Type": "File",
       "ID": 1,

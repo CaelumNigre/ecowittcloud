@@ -1,5 +1,4 @@
-﻿using cmdline;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,9 +10,23 @@ namespace Ecowitt
     {
         private Configuration _configuration;
         static readonly string[] data_samples = ["historical_data.json", "historical_data_2.json"];
+        private bool hasConfig = false;
 
         public Controler() { 
-            _configuration = new Configuration();
+            _configuration = new Configuration("configuration.json", ConfigurationContext.Cmdline);
+            if (_configuration == null) throw new NullReferenceException("Failed to initialize configuration");
+            if (!_configuration.ReadConfiguration(out string configErrorMessage))
+            {
+                Console.WriteLine("Error loading configuration: " + configErrorMessage);
+            }
+            else
+            {
+                if (!_configuration.ValidateConfiguration(out configErrorMessage))
+                {
+                    Console.WriteLine("Error loading configuration: " + configErrorMessage);
+                }
+                else hasConfig = true;
+            }
         }
 
         public static DateTime UnixTimeStampToDateTime(uint unixTimeStamp)
@@ -25,6 +38,7 @@ namespace Ecowitt
 
         public void RunProcessing()
         {
+            if (!hasConfig) throw new InvalidOperationException("No configuration to start processing");
             List<DataChannelMetaData> configuredchannels = _configuration.GetConfiguredInputChannels();
             List<DataChannelMetaData> dataInputChannels = new List<DataChannelMetaData>();
             List<DataChannelMetaData> channelsToBeProcessed = new List<DataChannelMetaData>();

@@ -8,7 +8,8 @@ using System.Threading.Tasks;
 
 namespace Ecowitt
 {
-    public enum TimestampFormats { Timestamp, UTC }
+    public enum TimestampFormats { Timestamp, UTC };
+    public enum ConfigurationContext { Cmdline, AzureFunction };
 
     internal class EcowittDevice
     {
@@ -48,11 +49,15 @@ namespace Ecowitt
     {
         public readonly string ConfigFileName;
         private string? _rawConfig = null;
+        private ConfigurationContext _context;
         public ConfigurationData ConfigurationSettings { get; private set;}
 
-        public Configuration(string configFileName) {
+
+        public Configuration(string configFileName, ConfigurationContext context = ConfigurationContext.Cmdline)
+        {
             ConfigFileName = configFileName;
             ConfigurationSettings = new ConfigurationData();
+            _context = context;
         }
 
         public bool ReadConfiguration(out string errorMessage)
@@ -104,10 +109,13 @@ namespace Ecowitt
                         errorMessage = "Invalid channel ID";
                         return false;
                     }
-                    if (!Uri.TryCreate(channelDefinition.URL, new UriCreationOptions(),out Uri? result))
+                    if (_context == ConfigurationContext.AzureFunction)
                     {
-                        errorMessage = "Invalid URL: " + channelDefinition.URL;
-                        return false;
+                        if (!Uri.TryCreate(channelDefinition.URL, new UriCreationOptions(), out Uri? result))
+                        {
+                            errorMessage = "Invalid URL: " + channelDefinition.URL;
+                            return false;
+                        }
                     }
                 }
                 foreach (var device in config.Devices)
