@@ -23,9 +23,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract scalar variables from JSON variable
         run: echo "$TF_BACKEND" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      #- uses: actions/setup-node@v4
+      #  with:
+      #    node-version: '20'
       - uses: hashicorp/setup-terraform@v3  
       - name: Initialize Terraform
         run: terraform init -backend-config="resource_group_name=${TF_RG_NAME}" -backend-config="storage_account_name=${TF_SA_NAME}" 
