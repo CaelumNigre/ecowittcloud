@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
+using Azure.Identity;
 
 namespace Ecowitt
 {
@@ -94,6 +96,8 @@ namespace Ecowitt
         public readonly string ConfigFileName;
         private string? _rawConfig = null;
         private ConfigurationContext _context;
+        private IConfigurationRoot _environmentConfig;
+        private DefaultAzureCredentialOptions _defaultAzureCredentialOptions;
         public ConfigurationData ConfigurationSettings { get; private set;}
 
 
@@ -102,6 +106,15 @@ namespace Ecowitt
             ConfigFileName = configFileName;
             ConfigurationSettings = new ConfigurationData();
             _context = context;
+            _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
+            {
+                ExcludeAzureCliCredential = true,
+                ExcludeAzurePowerShellCredential = true,
+                ExcludeManagedIdentityCredential = true
+            };
+            _environmentConfig = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
         }
 
         public bool ReadConfiguration(out string errorMessage)

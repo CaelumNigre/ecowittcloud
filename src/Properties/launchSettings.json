@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "cmdline": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "KV_NAME": "kv-ecowitt-test-euw-01"
+      }
+    }
+  }
+}
