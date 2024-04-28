@@ -2,7 +2,7 @@ name: terraform-build
 on:
   push:
     tags:
-    - deployTF
+    - buildTF
 run-name: Build Terraform plan for ${{ github.actor }} on ${{ github.ref }}
 jobs:
   build-TF-plan:
