@@ -142,7 +142,7 @@ jobs:
 
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Terraform Init
-      run: terraform init
+      run: terraform init -backend-config="resource_group_name=${TF_RG_NAME}" -backend-config="storage_account_name=${TF_SA_NAME}"
 
     # Download saved plan from artifacts  
     - name: Download Terraform Plan
