@@ -1,0 +1,38 @@
+name: terraform-deploy
+on:
+  push:
+    tags:
+    - buildTF
+run-name: Build Terraform plan for ${{ github.actor }} on ${{ github.ref }}
+jobs:
+    deploy-TF:
+        runs-on: windows-latest
+        environment: test
+        permissions:
+            id-token: write # This is required for requesting the JWT
+            contents: read  # This is required for actions/checkout
+        defaults:
+            run:  
+                working-directory: Terraform
+                shell: bash
+        env:    
+        # JSON holding all environmental variables needed by Azure backend configuration i.e. 
+        # tenant id, subscription id, client id, storage account name and its resource group name
+            TF_BACKEND: ${{ vars.TF_BACKEND }}
+        steps:          
+          - name: Extract scalar variables from JSON variable
+            run: echo "$TF_BACKEND" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV    
+          - name: Store Terraform plan file for deployment
+            uses: actions/download-artifact@v4
+            with:
+                name: TF-plan   
+                path: Terraform
+          - uses: hashicorp/setup-terraform@v3  
+          - name: Initialize Terraform
+            run: |
+                cd Terraform
+                terraform init -backend-config="resource_group_name=${TF_RG_NAME}" -backend-config="storage_account_name=${TF_SA_NAME}" 
+          - name: Run Terraform apply
+            run: |
+                cd Terraform
+                terraform apply tfplan
