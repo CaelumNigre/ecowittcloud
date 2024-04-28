@@ -1,0 +1,46 @@
+{
+  "Devices": [
+    {
+      "MAC": "C8:C9:A3:1C:08:3A",
+      "PollRateMinutes": 60,
+      "ConfiguredChannels": [
+        "indoor",
+        "outdoor",
+        "rainfall",
+        "wind"
+      ],
+      "TemperatureUnit": 1,
+      "PressureUnit": 3,
+      "WindSpeedUnit": 6,
+      "RainfallUnit": 12,
+      "SolarIrradianceUnit": 16,
+      "OutputChannel": {
+        "Type": "Blob",
+        "ID": 1,
+        "CustomChannelsNames": {
+          "indoor": "Garage"
+        },
+        "TimeStampFormat": "UTC"
+      }
+    },
+    {
+      "MAC": "C8:C9:A3:1C:08:3A",
+      "ConfiguredChannels": [
+        "pressure",
+        "soil_ch1"
+      ],
+      "OutputChannel": {
+        "Type": "Table",
+        "ID": 1,
+        "TimeStampFormat": "Timestamp"
+      }
+    }
+  ],
+  "OutputChannels": [    
+    {
+      "Type": "File",
+      "ID": 1,
+      "URL": "."
+    }
+  ]
+}
