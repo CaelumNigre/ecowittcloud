@@ -7,15 +7,15 @@ terraform {
     }
   }
   backend "azurerm" {
-    container_name             = "terraform"
-    key                        = "terraform.tfstate"
-    use_oidc                   = true    
+    container_name = "terraform"
+    key            = "terraform.tfstate"
+    use_oidc       = true
   }
   required_version = ">= 1.1.0"
 }
 
 provider "azurerm" {
-  use_oidc = true
+  use_oidc                   = true
   skip_provider_registration = true
   features {
 
