@@ -18,7 +18,7 @@ resource "azurerm_key_vault" "keyvault" {
   enable_rbac_authorization  = true
   purge_protection_enabled   = true
   network_acls {
-    bypass         = AzureServices
-    default_action = Allow
+    bypass         = "AzureServices"
+    default_action = "Allow"
   }
 }
