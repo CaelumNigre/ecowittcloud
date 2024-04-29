@@ -7,6 +7,8 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 using Azure.Identity;
+using System.Reflection;
+using Azure.Core.Diagnostics;
 
 namespace Ecowitt
 {
@@ -98,7 +100,11 @@ namespace Ecowitt
         private ConfigurationContext _context;
         private IConfigurationRoot _environmentConfig;
         private DefaultAzureCredentialOptions _defaultAzureCredentialOptions;
+        private Uri _keyVaultUri;
+        
         public ConfigurationData ConfigurationSettings { get; private set;}
+        public string? APIKey { get; private set; }
+        public string? ApplicationKey { get; private set; }
 
 
         public Configuration(string configFileName, ConfigurationContext context = ConfigurationContext.Cmdline)
@@ -106,15 +112,37 @@ namespace Ecowitt
             ConfigFileName = configFileName;
             ConfigurationSettings = new ConfigurationData();
             _context = context;
-            _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
-            {
-                ExcludeAzureCliCredential = true,
-                ExcludeAzurePowerShellCredential = true,
-                ExcludeManagedIdentityCredential = true
-            };
-            _environmentConfig = new ConfigurationBuilder()
-                .AddEnvironmentVariables()
-                .Build();
+            using AzureEventSourceListener listener = AzureEventSourceListener.CreateConsoleLogger();
+            {                
+                _environmentConfig = new ConfigurationBuilder()
+                    .AddEnvironmentVariables()
+                    .Build();
+                var kv = _environmentConfig["KV_NAME"];
+                if (string.IsNullOrEmpty(kv)) throw new InvalidOperationException("No Key Vault configured");
+                var tid = _environmentConfig["TENANT_ID"];
+                if (tid != null)
+                    _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
+                    {
+                        ExcludeAzureCliCredential = true,
+                        ExcludeAzurePowerShellCredential = true,
+                        ExcludeManagedIdentityCredential = true,
+                        TenantId = tid
+                    };
+                else
+                {
+                    _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
+                    {
+                        ExcludeAzureCliCredential = true,
+                        ExcludeAzurePowerShellCredential = true,
+                        ExcludeManagedIdentityCredential = true                        
+                    };
+                }
+                _keyVaultUri = new Uri("https://" + kv + ".vault.azure.net");
+                _environmentConfig = new ConfigurationBuilder()
+                    .AddEnvironmentVariables()
+                    .AddAzureKeyVault(_keyVaultUri, new DefaultAzureCredential(_defaultAzureCredentialOptions))
+                    .Build();
+            }
         }
 
         public bool ReadConfiguration(out string errorMessage)
