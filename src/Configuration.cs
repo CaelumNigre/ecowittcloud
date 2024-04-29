@@ -99,6 +99,7 @@ namespace Ecowitt
         private string? _rawConfig = null;
         private ConfigurationContext _context;
         private IConfigurationRoot _environmentConfig;
+        private IConfigurationRoot _keyVaultConfig;
         private DefaultAzureCredentialOptions _defaultAzureCredentialOptions;
         private Uri _keyVaultUri;
         
@@ -111,38 +112,38 @@ namespace Ecowitt
         {
             ConfigFileName = configFileName;
             ConfigurationSettings = new ConfigurationData();
-            _context = context;
-            using AzureEventSourceListener listener = AzureEventSourceListener.CreateConsoleLogger();
-            {                
-                _environmentConfig = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .Build();
-                var kv = _environmentConfig["KV_NAME"];
-                if (string.IsNullOrEmpty(kv)) throw new InvalidOperationException("No Key Vault configured");
-                var tid = _environmentConfig["TENANT_ID"];
-                if (tid != null)
-                    _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
-                    {
-                        ExcludeAzureCliCredential = true,
-                        ExcludeAzurePowerShellCredential = true,
-                        ExcludeManagedIdentityCredential = true,
-                        TenantId = tid
-                    };
-                else
+            _context = context;            
+            _environmentConfig = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+            var kv = _environmentConfig["KV_NAME"];
+            if (string.IsNullOrEmpty(kv)) throw new InvalidOperationException("No Key Vault configured");
+            var tid = _environmentConfig["TENANT_ID"];
+            if (tid != null)
+                _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
                 {
-                    _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
-                    {
-                        ExcludeAzureCliCredential = true,
-                        ExcludeAzurePowerShellCredential = true,
-                        ExcludeManagedIdentityCredential = true                        
-                    };
-                }
-                _keyVaultUri = new Uri("https://" + kv + ".vault.azure.net");
-                _environmentConfig = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .AddAzureKeyVault(_keyVaultUri, new DefaultAzureCredential(_defaultAzureCredentialOptions))
-                    .Build();
+                    ExcludeAzureCliCredential = true,
+                    ExcludeAzurePowerShellCredential = true,
+                    ExcludeManagedIdentityCredential = true,
+                    TenantId = tid
+                };
+            else
+            {
+                _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
+                {
+                    ExcludeAzureCliCredential = true,
+                    ExcludeAzurePowerShellCredential = true,
+                    ExcludeManagedIdentityCredential = true                        
+                };
             }
+            _keyVaultUri = new Uri("https://" + kv + ".vault.azure.net");
+            _keyVaultConfig = new ConfigurationBuilder()                
+                .AddAzureKeyVault(_keyVaultUri, new DefaultAzureCredential(_defaultAzureCredentialOptions))
+                .Build();
+            APIKey = _keyVaultConfig["api-key"];
+            if (string.IsNullOrWhiteSpace(APIKey)) throw new InvalidOperationException("No API key in Key Vault");
+            ApplicationKey = _keyVaultConfig["application-key"];
+            if (string.IsNullOrWhiteSpace(ApplicationKey)) throw new InvalidOperationException("No Application key in Key Vault");
         }
 
         public bool ReadConfiguration(out string errorMessage)

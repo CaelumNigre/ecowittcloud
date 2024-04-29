@@ -12,15 +12,18 @@ namespace Ecowitt
         static readonly string[] data_samples = ["historical_data.json", "historical_data_2.json"];
         private bool hasConfig = false;
 
-        public Controler() { 
+        public Controler() {
+            Console.WriteLine("Initializing configuration settings");
             _configuration = new Configuration("configuration.json", ConfigurationContext.Cmdline);
             if (_configuration == null) throw new NullReferenceException("Failed to initialize configuration");
+            Console.WriteLine("Reading configuration file");
             if (!_configuration.ReadConfiguration(out string configErrorMessage))
             {
                 Console.WriteLine("Error loading configuration: " + configErrorMessage);
             }
             else
             {
+                Console.WriteLine("Validating configuration settings");
                 if (!_configuration.ValidateConfiguration(out configErrorMessage))
                 {
                     Console.WriteLine("Error loading configuration: " + configErrorMessage);
