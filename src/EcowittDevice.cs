@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Azure.Core;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -28,6 +30,7 @@ namespace Ecowitt
         
         public const string API_BASE_URL = "https://api.ecowitt.net/api/v3/";
         public const string API_READ_HISTORICAL_DATA = "device/history";
+        public const string API_GET_DEVICE_INFO = "device/info";
 
         public EcowittDeviceConfiguration Configuration { get; set; }
         private string _apiKey;
@@ -46,23 +49,7 @@ namespace Ecowitt
             _httpClient = new HttpClient();
         }
 
-        private string BuildQueryString(Dictionary<string, string> argsList)
-        {
-            if (argsList == null) return "";
-            StringBuilder s = new StringBuilder();
-            bool first = true;
-            foreach (var item in argsList)
-            {
-                if (first)
-                {
-                    s.AppendFormat(CultureInfo.InvariantCulture, "{0}=", item.Key);
-                    first = false;
-                }
-                else s.AppendFormat(CultureInfo.InvariantCulture, "&{0}=", item.Key);
-                s.Append(HttpUtility.UrlEncode(item.Value));
-            }
-            return s.ToString();
-        }
+
 
         public async Task<string?> ReadHistoricalData(DateTime startTime, DateTime endTime, List<string>? customChannels = null)
         {
@@ -86,11 +73,47 @@ namespace Ecowitt
                 { "start_date", startTimeString },
                 { "end_date", endTimeString },
                 { "call_back", string.Join(',',channels) }
-            };
-            
+            };            
             string queryString = "?" + BuildQueryString(queryArgs);
             string requestURL = API_BASE_URL + API_READ_HISTORICAL_DATA + queryString;
             string requestID = "( " + queryArgs["mac"] + " - " + queryArgs["call_back"] + " )";
+            return await APICall(requestURL, requestID);
+        }
+
+        public async Task<string?> GetDeviceInfo()
+        {
+            Dictionary<string, string> queryArgs = new Dictionary<string, string>
+            {
+                { "application_key", _applicationKey },
+                { "api_key", _apiKey },
+                { "mac", Configuration.MAC }
+            };
+            string queryString = "?" + BuildQueryString(queryArgs);
+            string requestURL = API_BASE_URL + API_GET_DEVICE_INFO + queryString;
+            string requestID = "( " + queryArgs["mac"] + " )";
+            return await APICall(requestURL, requestID);
+        }
+
+        private string BuildQueryString(Dictionary<string, string> argsList)
+        {
+            if (argsList == null) return "";
+            StringBuilder s = new StringBuilder();
+            bool first = true;
+            foreach (var item in argsList)
+            {
+                if (first)
+                {
+                    s.AppendFormat(CultureInfo.InvariantCulture, "{0}=", item.Key);
+                    first = false;
+                }
+                else s.AppendFormat(CultureInfo.InvariantCulture, "&{0}=", item.Key);
+                s.Append(HttpUtility.UrlEncode(item.Value));
+            }
+            return s.ToString();
+        }
+
+        private async Task<string?> APICall(string requestURL, string requestID)
+        {
             HttpRequestMessage request;
             var rnd = new Random();
             int delayMultiplier = 1;
@@ -154,8 +177,8 @@ namespace Ecowitt
                                 Console.WriteLine("API returned empty result");
                             }
 
-                            var currentRandomDelay = rnd.Next(2000,4000);
-                            Thread.Sleep(currentRandomDelay*delayMultiplier);
+                            var currentRandomDelay = rnd.Next(2000, 4000);
+                            Thread.Sleep(currentRandomDelay * delayMultiplier);
                             delayMultiplier = delayMultiplier * 2;
                         }
                     }
