@@ -20,9 +20,9 @@ namespace Ecowitt
         static readonly string[] data_samples = ["historical_data.json", "historical_data_2.json"];
         private bool hasConfig = false;
 
-        public Controler() {
+        public Controler(ConfigurationContext context, bool useKV) {
             Console.WriteLine("Initializing configuration settings");
-            _configuration = new Configuration("configuration.json", ConfigurationContext.Cmdline);
+            _configuration = new Configuration("configuration.json", context, useKV);
             if (_configuration == null) throw new NullReferenceException("Failed to initialize configuration");
             Console.WriteLine("Reading configuration file");
             if (!_configuration.ReadConfiguration(out string configErrorMessage))
