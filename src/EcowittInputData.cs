@@ -99,6 +99,12 @@ namespace Ecowitt
                             break;   
                         }
                     case JsonTokenType.PropertyName:
+                        if (CurrentLevel == 1 && reader.ValueTextEquals("msg"))
+                        {
+                            if (!reader.Read()) throw new InvalidDataException("Unexpected end of data");
+                            var message = reader.GetString();
+                            if (message != "success") throw new InvalidDataException("Invalid result: " + message);
+                        }
                         if (CurrentLevel>2 && currentChannel == null) throw new InvalidDataException("Sensor data without channel");
                         if (!inDataSection && CurrentLevel == 1 && reader.ValueTextEquals("data"))
                         {
