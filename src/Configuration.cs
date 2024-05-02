@@ -10,11 +10,13 @@ using Azure.Identity;
 using System.Reflection;
 using Azure.Core.Diagnostics;
 using static Ecowitt.EcowittDevice;
+using System.Text.Json.Serialization;
 
 namespace Ecowitt
 {
     public enum TimestampFormats { Timestamp, UTC };
-    public enum ConfigurationContext { Cmdline, AzureFunction };    
+    public enum ConfigurationContext { Cmdline, AzureFunction };  
+    
 
     internal class EcowittDeviceConfiguration
     {
@@ -52,12 +54,7 @@ namespace Ecowitt
                 {
                     errorMessage = "No output channel defined for device";
                     return false;
-                }
-                if (!Enum.TryParse(typeof(ChannelTypes), OutputChannel.Type, out var channelType))
-                {
-                    errorMessage = "Invalid channel type: " + OutputChannel.Type;
-                    return false;
-                }
+                }                
                 if (OutputChannel.ID < 0)
                 {
                     errorMessage = "Invalid channel ID";
@@ -74,8 +71,7 @@ namespace Ecowitt
     }
 
     internal class OutputChannelConfiguration
-    {
-        public string? Type { get; set; }
+    {        
         public int ID { get; set; }
         public Dictionary<string, string> CustomChannelsNames { get; set; } = new Dictionary<string, string>();
         public string? TimeStampFormat { get; set; } = "Timestamp";
@@ -83,7 +79,7 @@ namespace Ecowitt
 
     internal class OutputChannelDefinition
     {
-        public string? Type { get; set; }
+        public ChannelTypes Type { get; set; }
         public int ID { get; set; }
         public string? URL { get; set; }
     }
@@ -179,7 +175,12 @@ namespace Ecowitt
         {
             errorMessage = "";
             if (_rawConfig == null) return false;
-            var options = new JsonSerializerOptions { ReadCommentHandling = JsonCommentHandling.Skip, };
+
+            var options = new JsonSerializerOptions { ReadCommentHandling = JsonCommentHandling.Skip,
+                Converters = {
+                        new JsonStringEnumConverter()
+                    }
+                };
             try
             {
                 var config = JsonSerializer.Deserialize<ConfigurationData>(_rawConfig, options);
@@ -194,18 +195,20 @@ namespace Ecowitt
                     errorMessage = "No output channels found in configuration";
                     return false;
                 }
+                List<int> channelsIds = new List<int>();
                 foreach (var channelDefinition in config.OutputChannels)
                 {
-                    if (!Enum.TryParse(typeof(ChannelTypes),channelDefinition.Type, out var channelType))
-                    {
-                        errorMessage = "Invalid channel type: " + channelDefinition.Type;
-                        return false;
-                    }
                     if (channelDefinition.ID < 0)
                     {
                         errorMessage = "Invalid channel ID";
                         return false;
                     }
+                    if (channelsIds.Contains(channelDefinition.ID))
+                    {
+                        errorMessage = "Duplicate channel ID";
+                        return false;
+                    }
+                    channelsIds.Add(channelDefinition.ID);
                     if (_context == ConfigurationContext.AzureFunction)
                     {
                         if (!Uri.TryCreate(channelDefinition.URL, new UriCreationOptions(), out Uri? result))
@@ -218,7 +221,11 @@ namespace Ecowitt
                 foreach (var device in config.Devices)
                 {
                     if (!device.Validate(true, out  errorMessage)) return false;                                        
-//FIXME add validation of channel ID with channel definitions
+                    if (!channelsIds.Contains(device.OutputChannel.ID))
+                    {
+                        errorMessage = "Nonexistent output channel ID: "+device.OutputChannel.ID;
+                        return false;
+                    }
                 }
                 ConfigurationSettings = config;
             }

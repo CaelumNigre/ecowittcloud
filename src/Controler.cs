@@ -35,7 +35,7 @@ namespace Ecowitt
                 Console.WriteLine("Validating configuration settings");
                 if (!_configuration.ValidateConfiguration(out configErrorMessage))
                 {
-                    Console.WriteLine("Error loading configuration: " + configErrorMessage);
+                    throw new InvalidDataException("Error loading configuration: " + configErrorMessage);
                 }
                 else hasConfig = true;
             }
