@@ -17,7 +17,8 @@ namespace Ecowitt
         
 
         private Configuration _configuration;
-        static readonly string[] data_samples = ["historical_data.json", "historical_data_2.json"];
+        // static readonly string[] data_samples = ["historical_data_3.json", "historical_data_2.json"];
+        static readonly string[] data_samples = ["historical_data_3.json"];
         private bool hasConfig = false;
 
         public Controler(ConfigurationContext context, bool useKV) {
@@ -120,7 +121,7 @@ namespace Ecowitt
             List<string> configuredchannels = _configuration.ConfigurationSettings.Devices[0].ConfiguredChannels;
             List<DataChannelMetaData> channelsToBeProcessed = new List<DataChannelMetaData>();
 
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < data_samples.Length; i++)
             {
                 var s = ReadJsonFromFile(data_samples[i]);
                 var inputData = new EcowittInputData(s);

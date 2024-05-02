@@ -25,10 +25,9 @@ namespace Ecowitt
 
         public DataSeries(string unit, List<(string?,string?)>? data)
         {
-            if (string.IsNullOrWhiteSpace(unit)) throw new ArgumentNullException("No unit value for sensor data");
             if (data == null || !data.Any()) throw new ArgumentNullException("No data provided for data series");
             Data = data;            
-            Unit = unit;        
+            Unit = unit;            
             foreach (var item in data)
             {
                 uint timestamp = 0;
