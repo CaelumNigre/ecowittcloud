@@ -4,11 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using static Ecowitt.EcowittDevice;
 
 namespace Ecowitt
 {
     internal class OutputChannelMetadata
     {
+        public required string ChannelName { get; set; } = "";
         public uint LastTimestamp { get; set; }
         public required string DeviceName { get; set; } = "";
         public required string StationType { get; set; } = "";
@@ -17,6 +19,22 @@ namespace Ecowitt
         public int DeviceCloudId { get; set; }
         public double DeviceLongitude { get; set; }
         public double DeviceLatitude { get; set; }
+        public EcowittTemperatureUnits TemperatureUnit { get; set; } = EcowittTemperatureUnits.Celsius;
+        public EcowittPressureUnits PressureUnit { get; set; } = EcowittPressureUnits.hPa;
+        public EcowittWindSpeedUnits WindSpeedUnit { get; set; } = EcowittWindSpeedUnits.mps;
+        public EcowittRainfallUnits RainfallUnit { get; set; } = EcowittRainfallUnits.mm;
+        public EcowittSolarIrradianceUnits SolarIrradianceUnit { get; set; } = EcowittSolarIrradianceUnits.Wpm;
+        public OutputChannelConfiguration OutputChannel { get; set; } = new OutputChannelConfiguration();
+
+
+        public bool Validate()
+        {
+            if (MAC.Length!=17) return false;
+            if (string.IsNullOrWhiteSpace(ChannelName)) return false;
+            if (DeviceLatitude > 90.0 || DeviceLatitude < -90.0) return false;
+            if (DeviceLongitude > 180.0 || DeviceLongitude < -180.0) return false;            
+            return true;
+        }
     }
 
     internal class OutputChannelBehaviorConfiguration
@@ -47,19 +65,19 @@ namespace Ecowitt
         private int rowCount = -1;
         private string metaDataFileName;
         private uint OriginalLastTimeStamp = 0;
-        private OutputChannelMetadata? metaData;
-        private OutputChannelBehaviorConfiguration _configuration;
+        private OutputChannelMetadata metaData;
+        private OutputChannelBehaviorConfiguration configuration;
         
 
-        public CSVFileOutputChannel(string channelName, OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) {
-            if (string.IsNullOrWhiteSpace(channelName)) throw new ArgumentNullException("Channel name can't be empty");
+        public CSVFileOutputChannel(OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) {
+            if (!sourceMetadata.Validate()) throw new ArgumentException("Invalid output channel configuration");
+            ChannelName = sourceMetadata.ChannelName;
             ChannelStartDate = 0;
             ChannelEndDate = 0;
-            Count = 0;
-            ChannelName = channelName;
-            metaDataFileName = string.Format("{0}_{1}", ChannelName, METADATAFILESUFFIX);
+            Count = 0;            
+            metaDataFileName = string.Format("{0}_{1}", sourceMetadata.ChannelName, METADATAFILESUFFIX);
             metaData = sourceMetadata;
-            _configuration = config;
+            configuration = config;
         }
 
         public bool InitChannel(out string message)
@@ -81,7 +99,32 @@ namespace Ecowitt
                     message = "Deserialization failed to produce non-null data";
                     return false;
                 }
-                if (!_configuration.AllowLocationChanges)
+                if (existingMetaData.TemperatureUnit != metaData.TemperatureUnit)
+                {
+                    message = "Temperature units changed";
+                    return false;
+                }
+                if (existingMetaData.PressureUnit != metaData.PressureUnit)
+                {
+                    message = "Pressure units changed";
+                    return false;
+                }
+                if (existingMetaData.RainfallUnit != metaData.RainfallUnit)
+                {
+                    message = "Rainfall units changed";
+                    return false;
+                }
+                if (existingMetaData.WindSpeedUnit!= metaData.WindSpeedUnit)
+                {
+                    message = "Wind speed units changed";
+                    return false;
+                }
+                if (existingMetaData.SolarIrradianceUnit != metaData.SolarIrradianceUnit)
+                {
+                    message = "Solar irradiance units changed";
+                    return false;
+                }
+                if (!configuration.AllowLocationChanges)
                 {
                     if (existingMetaData.DeviceLatitude != metaData.DeviceLatitude || existingMetaData.DeviceLongitude != metaData.DeviceLongitude)
                     {
@@ -89,7 +132,7 @@ namespace Ecowitt
                         return false;
                     }
                 }
-                if (!_configuration.AllowStationTypeChange)
+                if (!configuration.AllowStationTypeChange)
                 {
                     if (existingMetaData.StationType != metaData.StationType)
                     {

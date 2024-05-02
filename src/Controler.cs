@@ -76,19 +76,21 @@ namespace Ecowitt
             }                        
         }
 
-        public void RunProcessing(DataProcessingMode mode)
+        public void RunProcessing(DataProcessingMode mode, bool initialRun = false)
         {
             if (!hasConfig) throw new InvalidOperationException("No configuration to start processing");
 
             
             if (mode == DataProcessingMode.Offline) RunOfflineProcessing();
-            if (mode == DataProcessingMode.Online) RunOnlineProcessing();
+            if (mode == DataProcessingMode.Online) RunOnlineProcessing(initialRun);
         }
 
-        private void RunOnlineProcessing()
+        private void RunOnlineProcessing(bool initialRun)
         {         
             DateTime endTime = DateTime.Now;
-            DateTime startTime = endTime.AddMinutes(-360);
+            DateTime startTime;
+            if (initialRun) startTime = endTime.AddDays(-90);
+            else startTime = endTime.AddMinutes(-360);
             // First get configured devices details to eliminate devices that do not exist in cloud API
             List<(Task<APIDeviceDetailData?>, EcowittDeviceConfiguration)> detailsRequestTasks = 
                 new List<(Task<APIDeviceDetailData?>,EcowittDeviceConfiguration)>();
@@ -172,6 +174,7 @@ namespace Ecowitt
                         }
                     }
                     var deviceDetails = devicesDetails.Where(x => x.Key == task.Item2.Configuration.MAC).FirstOrDefault().Value;
+                    if (deviceDetails == null) throw new NullReferenceException("Fatal error can't find configured device by MAC");
                     foreach (var channel in channelsToBeProcessed)
                     {                        
                         OutputChannelMetadata meta = new OutputChannelMetadata()
@@ -182,12 +185,13 @@ namespace Ecowitt
                             DeviceCloudId = deviceDetails.Id,
                             DeviceCreationTime = deviceDetails.CreateTime,
                             DeviceLatitude = deviceDetails.Latitude,
-                            DeviceLongitude = deviceDetails.Longitude
+                            DeviceLongitude = deviceDetails.Longitude,
+                            ChannelName = channel.ChannelName
                         };
                         OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                         {
                         };
-                        var outputChannel = new CSVFileOutputChannel(channel.ChannelName, meta, channelConfig);
+                        var outputChannel = new CSVFileOutputChannel(meta, channelConfig);
                         if (outputChannel.InitChannel(out string errorMessage))
                         {
                             var channelData = inputData.GetChannel(channel.ChannelName);
@@ -242,7 +246,7 @@ namespace Ecowitt
                     OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                     {
                     };
-                    var outputChannel = new CSVFileOutputChannel(channel.ChannelName,null,channelConfig);
+                    var outputChannel = new CSVFileOutputChannel(null,channelConfig);
                     outputChannel.InitChannel(out string message);
                     var channelData = inputData.GetChannel(channel.ChannelName);
                     if (channelData == null) continue;

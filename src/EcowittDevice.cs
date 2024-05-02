@@ -16,6 +16,11 @@ namespace Ecowitt
 {
     internal class EcowittDevice
     {
+        public enum EcowittTemperatureUnits { Fahrenheit = 2, Celsius = 1};
+        public enum EcowittPressureUnits { InchesHg = 4, hPa =3 , MmHg = 5};
+        public enum EcowittWindSpeedUnits { mph =9 , mps = 6, kmh = 7, kn = 8, BFT = 10, fpm = 11};
+        public enum EcowittRainfallUnits { inches = 13, mm =12 };
+        public enum EcowittSolarIrradianceUnits { Wpm = 16 , lux = 14, fc = 15};
 
         internal class APIResult {
 
@@ -118,11 +123,11 @@ namespace Ecowitt
                 { "application_key", _applicationKey },
                 { "api_key", _apiKey },
                 { "mac", Configuration.MAC },
-                { "temp_unitid", Configuration.TemperatureUnit.ToString() },
-                { "pressure_unitid", Configuration.PressureUnit.ToString() },
-                { "wind_speed_unitid", Configuration.WindSpeedUnit.ToString() },
-                { "rainfall_unitid", Configuration.RainfallUnit.ToString() },
-                { "solar_irradiance_unitid", Configuration.SolarIrradianceUnit.ToString() },
+                { "temp_unitid", ((int) Configuration.TemperatureUnit).ToString() },
+                { "pressure_unitid", ((int) Configuration.PressureUnit).ToString() },
+                { "wind_speed_unitid", ((int) Configuration.WindSpeedUnit).ToString() },
+                { "rainfall_unitid", ((int) Configuration.RainfallUnit).ToString() },
+                { "solar_irradiance_unitid", ((int) Configuration.SolarIrradianceUnit).ToString() },
                 { "start_date", startTimeString },
                 { "end_date", endTimeString },
                 { "call_back", string.Join(',',channels) }

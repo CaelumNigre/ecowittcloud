@@ -16,7 +16,7 @@
       "SolarIrradianceUnit": 16,
       "OutputChannel": {
         "Type": "Blob",
-        "ID": 1,
+        "ID": 3,
         "CustomChannelsNames": {
           "indoor": "Garage"
         },
@@ -31,7 +31,7 @@
       ],
       "OutputChannel": {
         "Type": "Table",
-        "ID": 1,
+        "ID": 2,
         "TimeStampFormat": "Timestamp"
       }
     }

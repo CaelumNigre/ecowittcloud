@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Azure.Identity;
 using System.Reflection;
 using Azure.Core.Diagnostics;
+using static Ecowitt.EcowittDevice;
 
 namespace Ecowitt
 {
@@ -20,11 +21,11 @@ namespace Ecowitt
         public string MAC { get; set; } = "00:00:00:00:00:00";
         public int PollRateMinutes { get; set; } = 60;
         public List<string> ConfiguredChannels { get; set; } = new List<string>();
-        public int TemperatureUnit { get; set; } = 1;
-        public int PressureUnit { get; set; } = 3;
-        public int WindSpeedUnit { get; set; } = 6;
-        public int RainfallUnit { get; set; } = 12;
-        public int SolarIrradianceUnit { get; set; } = 16;
+        public EcowittTemperatureUnits TemperatureUnit { get; set; } = EcowittTemperatureUnits.Celsius;
+        public EcowittPressureUnits PressureUnit { get; set; } = EcowittPressureUnits.hPa;
+        public EcowittWindSpeedUnits WindSpeedUnit { get; set; } = EcowittWindSpeedUnits.mps;
+        public EcowittRainfallUnits RainfallUnit { get; set; } = EcowittRainfallUnits.mm;
+        public EcowittSolarIrradianceUnits SolarIrradianceUnit { get; set; } = EcowittSolarIrradianceUnits.Wpm;
         public OutputChannelConfiguration OutputChannel { get; set; } = new OutputChannelConfiguration();
 
         public bool Validate(bool validateOutputChannels, out string errorMessage)
