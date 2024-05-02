@@ -64,18 +64,22 @@ namespace Ecowitt
         private string[]? timeRows = null;
         private int rowCount = -1;
         private string metaDataFileName;
+        private string filePath;
         private uint OriginalLastTimeStamp = 0;
         private OutputChannelMetadata metaData;
         private OutputChannelBehaviorConfiguration configuration;
         
 
-        public CSVFileOutputChannel(OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) {
+        public CSVFileOutputChannel(string? folderPath, OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) {
             if (!sourceMetadata.Validate()) throw new ArgumentException("Invalid output channel configuration");
+            if (string.IsNullOrWhiteSpace(folderPath)) filePath = "";
+                else filePath = folderPath;
             ChannelName = sourceMetadata.ChannelName;
             ChannelStartDate = 0;
             ChannelEndDate = 0;
             Count = 0;            
             metaDataFileName = string.Format("{0}_{1}", sourceMetadata.ChannelName, METADATAFILESUFFIX);
+            if (filePath != "") metaDataFileName = filePath + "\\" + metaDataFileName;
             metaData = sourceMetadata;
             configuration = config;
         }
@@ -248,6 +252,7 @@ namespace Ecowitt
             if (year == originalDataStartTime.Year)
             {
                 string fileName = string.Format("{0}_{1}", ChannelName, year);
+                if (filePath != "") fileName = filePath + "\\" + fileName;
                 using (StreamWriter sw = new StreamWriter(fileName,
                     new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Append }))
                 {
@@ -288,6 +293,7 @@ namespace Ecowitt
             {
                 if (firstRowOfNextYear > 0) year = year + 1;
                 string fileName = string.Format("{0}_{1}", ChannelName, year);
+                if (filePath != "") fileName = filePath + "\\" + fileName;
                 using (StreamWriter sw = new StreamWriter(fileName,
                     new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.CreateNew }))
                 {

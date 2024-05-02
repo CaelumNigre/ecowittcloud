@@ -38,7 +38,7 @@
     {
       "Type": "File",
       "ID": 1,
-      "URL": "."
+      "URL": "data"
     },
     {
       "Type": "Table",

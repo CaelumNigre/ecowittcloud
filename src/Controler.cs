@@ -92,17 +92,18 @@ namespace Ecowitt
             if (initialRun) startTime = endTime.AddDays(-90);
             else startTime = endTime.AddMinutes(-360);
             // First get configured devices details to eliminate devices that do not exist in cloud API
-            List<(Task<APIDeviceDetailData?>, EcowittDeviceConfiguration)> detailsRequestTasks = 
-                new List<(Task<APIDeviceDetailData?>,EcowittDeviceConfiguration)>();
-            foreach (var configuredDevice in _configuration.ConfigurationSettings.Devices)
+            List<(Task<APIDeviceDetailData?>, EcowittDeviceConfiguration,int)> detailsRequestTasks = 
+                new List<(Task<APIDeviceDetailData?>,EcowittDeviceConfiguration,int)>();
+            for (int i=0; i<_configuration.ConfigurationSettings.Devices.Count; i++)
             {
+                var configuredDevice = _configuration.ConfigurationSettings.Devices[i];
                 var task = GetDeviceDetails(configuredDevice);             
-                detailsRequestTasks.Add(new (task,configuredDevice));
+                detailsRequestTasks.Add(new (task,configuredDevice,i));
                 // rate throttling in API - 1 req / sec
                 Thread.Sleep(1000);
             }
             Task.WaitAll(detailsRequestTasks.Select( x => x.Item1).ToArray());
-            List<EcowittDeviceConfiguration> verifiedDevices = new List<EcowittDeviceConfiguration>();
+            List<(EcowittDeviceConfiguration,int)> verifiedDevices = new List<(EcowittDeviceConfiguration,int)>();
             Dictionary<string, APIDeviceDetailData> devicesDetails = new Dictionary<string, APIDeviceDetailData>();
             foreach (var task in detailsRequestTasks)
             {
@@ -116,7 +117,7 @@ namespace Ecowitt
                     }
                     else
                     {
-                        verifiedDevices.Add(task.Item2);
+                        verifiedDevices.Add(new (task.Item2,task.Item3));
                         if (!devicesDetails.ContainsKey(task.Item2.MAC)) devicesDetails.Add(task.Item2.MAC, deviceDetails);
                     }
                 }
@@ -127,19 +128,19 @@ namespace Ecowitt
                 return;
             }
             // Now fetch the data for each device that has been confirmed to exist in the Ecowitt cloud using device configuration
-            List<(Task<string?>,EcowittDevice)> dataRequestTasks = new List<(Task<string?>,EcowittDevice)>();
+            List<(Task<string?>,EcowittDevice,int)> dataRequestTasks = new List<(Task<string?>,EcowittDevice,int)>();
             foreach (var configuredDevice in verifiedDevices)
             {            
                 var sb = new StringBuilder();
-                foreach (var c in configuredDevice.ConfiguredChannels)
+                foreach (var c in configuredDevice.Item1.ConfiguredChannels)
                 {
                     sb.Append(c+",");
                 }
                 var channelsList = sb.ToString().Trim(',');
-                EcowittDevice device = new EcowittDevice(configuredDevice, _configuration.APIKey, _configuration.ApplicationKey);
+                EcowittDevice device = new EcowittDevice(configuredDevice.Item1, _configuration.APIKey, _configuration.ApplicationKey);
                 Console.WriteLine("Fetching data for device: " + device.Configuration.MAC + " Channels: " +channelsList );
                 var rTask = device.ReadHistoricalData(startTime, endTime);
-                dataRequestTasks.Add(new(rTask, device));
+                dataRequestTasks.Add(new(rTask, device,configuredDevice.Item2));
                 // rate throttling in API - 1 req / sec
                 Thread.Sleep(1000);
             }
@@ -191,20 +192,40 @@ namespace Ecowitt
                         OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                         {
                         };
-                        var outputChannel = new CSVFileOutputChannel(meta, channelConfig);
-                        if (outputChannel.InitChannel(out string errorMessage))
+                        var configuredOutputChannelID = _configuration.ConfigurationSettings.Devices[task.Item3].OutputChannel.ID;
+                        var configuredOutputChannel =
+                            _configuration.ConfigurationSettings.OutputChannels.Where(x => x.ID == configuredOutputChannelID).FirstOrDefault();
+                        if (configuredOutputChannel == null) throw new NullReferenceException("Fatal error can't find output channel configuration");
+                        switch (configuredOutputChannel.Type)
                         {
-                            var channelData = inputData.GetChannel(channel.ChannelName);
-                            if (channelData == null) continue;
-                            outputChannel.AddData(channelData);
-                            outputChannel.SaveData();
+                            case ChannelTypes.File:
+                                {
+                                    var outputChannel = new CSVFileOutputChannel(configuredOutputChannel.URL, meta, channelConfig);
+                                    if (outputChannel.InitChannel(out string errorMessage))
+                                    {
+                                        var channelData = inputData.GetChannel(channel.ChannelName);
+                                        if (channelData == null) continue;
+                                        outputChannel.AddData(channelData);
+                                        outputChannel.SaveData();
+                                    }
+                                    else
+                                    {
+                                        var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
+                                            channel.ChannelName, task.Item2.Configuration.MAC, errorMessage);
+                                        Console.WriteLine(em);
+                                    }
+                                    break;
+                                }
+                            default:
+                                {
+                                    var em = string.Format("This output channel type is not implemented yet. {0}",
+                                        configuredOutputChannel.Type.ToString());                                    
+                                    //throw new NotImplementedException(em);
+                                    Console.WriteLine(em);
+                                    break;
+                                }
                         }
-                        else
-                        {
-                            var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
-                                channel.ChannelName, task.Item2.Configuration.MAC, errorMessage);
-                            Console.WriteLine(em);
-                        }
+                        
                     }
                 }
                 else
@@ -246,7 +267,7 @@ namespace Ecowitt
                     OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                     {
                     };
-                    var outputChannel = new CSVFileOutputChannel(null,channelConfig);
+                    var outputChannel = new CSVFileOutputChannel(null,null,channelConfig);
                     outputChannel.InitChannel(out string message);
                     var channelData = inputData.GetChannel(channel.ChannelName);
                     if (channelData == null) continue;
