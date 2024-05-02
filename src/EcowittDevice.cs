@@ -11,6 +11,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Web;
 
+
 namespace Ecowitt
 {
     internal class EcowittDevice
@@ -24,10 +25,62 @@ namespace Ecowitt
             public string? Message { get; set; }
             [JsonPropertyName("time")]
             public string? Time { get; set; }
-            public List<object?>? Data {  get; set; }
-
+            public object? Data {  get; set; }
         }
-        
+
+        internal class APIDeviceDetailData
+        {
+            [JsonPropertyName("id")]
+            public int Id { get; set; }
+
+            [JsonPropertyName("name")]
+            public string? Name { get; set; }
+
+            [JsonPropertyName("mac")]
+            public string? MAC { get; set; }
+
+            [JsonPropertyName("type")]
+            public int Type { get; set; }
+
+            [JsonPropertyName("date_zone_id")]
+            public string? DateZoneId { get; set; }
+
+            [JsonPropertyName("createtime")]
+            public uint CreateTime { get; set; }
+
+            [JsonPropertyName("longitude")]
+            public double Longitude { get; set; }
+
+            [JsonPropertyName("latitude")]
+            public double Latitude { get; set; }
+
+            [JsonPropertyName("stationtype")]
+            public string? StationType { get; set; }
+
+            public bool Validate()
+            {
+                if (Id == 0) return false;
+                if (string.IsNullOrWhiteSpace(Name)) return false;
+                if (string.IsNullOrWhiteSpace(MAC)) return false;
+                if (string.IsNullOrWhiteSpace(StationType)) return false;
+                return true;
+            }
+         };
+
+        internal class APIDeviceDetails {
+            [JsonPropertyName("code")]
+            public int Code { get; set; }
+
+            [JsonPropertyName("msg")]
+            public string? Message { get; set; }
+
+            [JsonPropertyName("time")]
+            public long Time { get; set; }
+
+            [JsonPropertyName("data")]
+            public APIDeviceDetailData? Data { get; set; }
+        };
+            
         public const string API_BASE_URL = "https://api.ecowitt.net/api/v3/";
         public const string API_READ_HISTORICAL_DATA = "device/history";
         public const string API_GET_DEVICE_INFO = "device/info";

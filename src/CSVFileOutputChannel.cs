@@ -2,10 +2,29 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Ecowitt
 {
+    internal class OutputChannelMetadata
+    {
+        public uint LastTimestamp { get; set; }
+        public required string DeviceName { get; set; } = "";
+        public required string StationType { get; set; } = "";
+        public required string MAC { get; set; } = "00:00:00:00:00:00";
+        public uint DeviceCreationTime { get;set; }
+        public int DeviceCloudId { get; set; }
+        public double DeviceLongitude { get; set; }
+        public double DeviceLatitude { get; set; }
+    }
+
+    internal class OutputChannelBehaviorConfiguration
+    {
+        public bool AllowLocationChanges { get; set; } = false;
+        public bool AllowStationTypeChange { get; set; } = false;
+    }
+
     internal class CSVFileOutputChannel : IChannelMetaData
     {
         const string METADATAFILESUFFIX = "metadata";
@@ -28,48 +47,86 @@ namespace Ecowitt
         private int rowCount = -1;
         private string metaDataFileName;
         private uint OriginalLastTimeStamp = 0;
+        private OutputChannelMetadata? metaData;
+        private OutputChannelBehaviorConfiguration _configuration;
         
 
-        public CSVFileOutputChannel(string channelName) {
+        public CSVFileOutputChannel(string channelName, OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) {
             if (string.IsNullOrWhiteSpace(channelName)) throw new ArgumentNullException("Channel name can't be empty");
             ChannelStartDate = 0;
             ChannelEndDate = 0;
             Count = 0;
             ChannelName = channelName;
             metaDataFileName = string.Format("{0}_{1}", ChannelName, METADATAFILESUFFIX);
+            metaData = sourceMetadata;
+            _configuration = config;
         }
 
-        public void InitChannel()
+        public bool InitChannel(out string message)
         {
             timeRows = null;
             dataColumns = null;
             rowCount = -1;
+            message = "";
             try
             {
+                string? fileContent;
                 using (StreamReader sr = new StreamReader(metaDataFileName))
                 {
-                    var ts = sr.ReadLine();
-                    uint x = 0;
-                    if (!UInt32.TryParse(ts, out x)) throw new InvalidDataException();
-                    LastTimeStamp = x;
-                    OriginalLastTimeStamp = LastTimeStamp;
+                    fileContent = sr.ReadToEnd();                    
                 }
+                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent);
+                if (existingMetaData == null)
+                {
+                    message = "Deserialization failed to produce non-null data";
+                    return false;
+                }
+                if (!_configuration.AllowLocationChanges)
+                {
+                    if (existingMetaData.DeviceLatitude != metaData.DeviceLatitude || existingMetaData.DeviceLongitude != metaData.DeviceLongitude)
+                    {
+                        message = "Station location changed";
+                        return false;
+                    }
+                }
+                if (!_configuration.AllowStationTypeChange)
+                {
+                    if (existingMetaData.StationType != metaData.StationType)
+                    {
+                        message = "Station type changed";
+                        return false;
+                    }
+                }
+                metaData = existingMetaData;
+                OriginalLastTimeStamp = existingMetaData.LastTimestamp;
+                return true;
             }
             catch (Exception ex)
             {
                 if (ex is FileNotFoundException || ex is InvalidDataException)
-                {
-                    
+                {                    
                     using (StreamWriter sw = new StreamWriter(metaDataFileName,
                         new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Create} ))
                     {
-                        LastTimeStamp = 0;
-                        OriginalLastTimeStamp = 0;
-                        sw.WriteLine("0");
-                        sw.Close();
+                        JsonSerializerOptions options = new JsonSerializerOptions() {  WriteIndented = true };
+                        var s = JsonSerializer.Serialize(metaData, options);
+                        sw.WriteLine(s);    
                     }
+                    return true;
                 }
                 else throw;
+            }
+        }
+
+        private void UpdateMetadata()
+        {
+            metaData.LastTimestamp = LastTimeStamp;
+            using (StreamWriter sw = new StreamWriter(metaDataFileName,
+                new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Truncate }))
+            {
+                var s = JsonSerializer.Serialize(metaData);
+                sw.WriteLine(s);
+                sw.Flush();
             }
         }
 
@@ -79,7 +136,7 @@ namespace Ecowitt
             // 1. all sensors have the same number of data points
             // 2. all sensors have the same timestamps at the same positions in data set
             // 3. data series sorted on timestamp
-            if (channel == null || channel.Data == null || !channel.Data.Any()) return;
+            if (channel == null || channel.Data == null || !channel.Data.Any()) return;            
             if (timeRows == null)
             {           
                 timeRows = new string[channel.Data.Values.First().Data?.Count ?? 0];                
@@ -211,13 +268,7 @@ namespace Ecowitt
                     sw.Flush();
                 }
             }
-            using (StreamWriter sw = new StreamWriter(metaDataFileName,
-                        new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Truncate }))
-            {
-                string s = LastTimeStamp.ToString();
-                sw.WriteLine(s);
-                sw.Close();
-            }
+            UpdateMetadata();
         }
         
     }
