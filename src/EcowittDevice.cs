@@ -180,6 +180,7 @@ namespace Ecowitt
             {
                 using (request = new HttpRequestMessage(new HttpMethod("GET"), requestURL))
                 {
+                    DateTime startTime = DateTime.Now;
                     using (HttpResponseMessage res = await _httpClient.SendAsync(request))
                     {
                         using (HttpContent content = res.Content)
@@ -190,6 +191,8 @@ namespace Ecowitt
                                 if (res.StatusCode == System.Net.HttpStatusCode.NotFound) throw new ArgumentException("Result not found");
                                 throw new HttpRequestException("HTTP code: " + res.StatusCode + " Message: " + res.ReasonPhrase);
                             }
+                            TimeSpan duration = DateTime.Now - startTime;
+                            Console.WriteLine("Response time (ms): " + duration.TotalMilliseconds.ToString());
                             string data = await content.ReadAsStringAsync();
                             if (!string.IsNullOrWhiteSpace(data))
                             {

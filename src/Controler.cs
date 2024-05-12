@@ -98,7 +98,7 @@ namespace Ecowitt
         {         
             DateTime endTime = DateTime.Now;
             DateTime startTime;
-            if (initialRun) startTime = endTime.AddDays(-5);
+            if (initialRun) startTime = endTime.AddDays(-89);
             else startTime = endTime.AddMinutes(-360);
             // First get configured devices details to eliminate devices that do not exist in cloud API
             List<(Task<APIDeviceDetailData?>, EcowittDeviceConfiguration,int)> detailsRequestTasks = 
@@ -164,7 +164,7 @@ namespace Ecowitt
                         currentStartTime = currentStartTime.AddDays(1);
                         currentEndTime = currentStartTime.AddMinutes(1439);
                         idx++;
-                        Thread.Sleep(1000);
+                        Thread.Sleep(5000);
                     }
                     DataRequestTask lastTask = new DataRequestTask();
                     lastTask.Task = device.ReadHistoricalData(currentStartTime, endTime);
