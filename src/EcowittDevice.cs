@@ -14,78 +14,80 @@ using System.Web;
 
 namespace Ecowitt
 {
-    internal class EcowittDevice
+    public enum EcowittTemperatureUnits { Fahrenheit = 2, Celsius = 1 };
+    public enum EcowittPressureUnits { InchesHg = 4, hPa = 3, MmHg = 5 };
+    public enum EcowittWindSpeedUnits { mph = 9, mps = 6, kmh = 7, kn = 8, BFT = 10, fpm = 11 };
+    public enum EcowittRainfallUnits { inches = 13, mm = 12 };
+    public enum EcowittSolarIrradianceUnits { Wpm = 16, lux = 14, fc = 15 };
+    internal class APIResult
     {
-        public enum EcowittTemperatureUnits { Fahrenheit = 2, Celsius = 1};
-        public enum EcowittPressureUnits { InchesHg = 4, hPa =3 , MmHg = 5};
-        public enum EcowittWindSpeedUnits { mph =9 , mps = 6, kmh = 7, kn = 8, BFT = 10, fpm = 11};
-        public enum EcowittRainfallUnits { inches = 13, mm =12 };
-        public enum EcowittSolarIrradianceUnits { Wpm = 16 , lux = 14, fc = 15};
 
-        internal class APIResult {
+        [JsonPropertyName("code")]
+        public int Code { get; set; }
+        [JsonPropertyName("msg")]
+        public string? Message { get; set; }
+        [JsonPropertyName("time")]
+        public string? Time { get; set; }
+        public object? Data { get; set; }
+    }
 
-            [JsonPropertyName("code")]
-            public int Code { get; set; }
-            [JsonPropertyName("msg")]
-            public string? Message { get; set; }
-            [JsonPropertyName("time")]
-            public string? Time { get; set; }
-            public object? Data {  get; set; }
-        }
+    internal class APIDeviceDetailData
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
 
-        internal class APIDeviceDetailData
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("mac")]
+        public string? MAC { get; set; }
+
+        [JsonPropertyName("type")]
+        public int Type { get; set; }
+
+        [JsonPropertyName("date_zone_id")]
+        public string? DateZoneId { get; set; }
+
+        [JsonPropertyName("createtime")]
+        public uint CreateTime { get; set; }
+
+        [JsonPropertyName("longitude")]
+        public double Longitude { get; set; }
+
+        [JsonPropertyName("latitude")]
+        public double Latitude { get; set; }
+
+        [JsonPropertyName("stationtype")]
+        public string? StationType { get; set; }
+
+        public bool Validate()
         {
-            [JsonPropertyName("id")]
-            public int Id { get; set; }
+            if (Id == 0) return false;
+            if (string.IsNullOrWhiteSpace(Name)) return false;
+            if (string.IsNullOrWhiteSpace(MAC)) return false;
+            if (string.IsNullOrWhiteSpace(StationType)) return false;
+            return true;
+        }
+    };
 
-            [JsonPropertyName("name")]
-            public string? Name { get; set; }
+    internal class APIDeviceDetails
+    {
+        [JsonPropertyName("code")]
+        public int Code { get; set; }
 
-            [JsonPropertyName("mac")]
-            public string? MAC { get; set; }
+        [JsonPropertyName("msg")]
+        public string? Message { get; set; }
 
-            [JsonPropertyName("type")]
-            public int Type { get; set; }
+        [JsonPropertyName("time")]
+        public long Time { get; set; }
 
-            [JsonPropertyName("date_zone_id")]
-            public string? DateZoneId { get; set; }
+        [JsonPropertyName("data")]
+        public APIDeviceDetailData? Data { get; set; }
+    };
 
-            [JsonPropertyName("createtime")]
-            public uint CreateTime { get; set; }
+    internal class EcowittDevice
+    { 
 
-            [JsonPropertyName("longitude")]
-            public double Longitude { get; set; }
-
-            [JsonPropertyName("latitude")]
-            public double Latitude { get; set; }
-
-            [JsonPropertyName("stationtype")]
-            public string? StationType { get; set; }
-
-            public bool Validate()
-            {
-                if (Id == 0) return false;
-                if (string.IsNullOrWhiteSpace(Name)) return false;
-                if (string.IsNullOrWhiteSpace(MAC)) return false;
-                if (string.IsNullOrWhiteSpace(StationType)) return false;
-                return true;
-            }
-         };
-
-        internal class APIDeviceDetails {
-            [JsonPropertyName("code")]
-            public int Code { get; set; }
-
-            [JsonPropertyName("msg")]
-            public string? Message { get; set; }
-
-            [JsonPropertyName("time")]
-            public long Time { get; set; }
-
-            [JsonPropertyName("data")]
-            public APIDeviceDetailData? Data { get; set; }
-        };
-            
         public const string API_BASE_URL = "https://api.ecowitt.net/api/v3/";
         public const string API_READ_HISTORICAL_DATA = "device/history";
         public const string API_GET_DEVICE_INFO = "device/info";
@@ -106,8 +108,6 @@ namespace Ecowitt
             _applicationKey = applicationKey;
             _httpClient = new HttpClient();
         }
-
-
 
         public async Task<string?> ReadHistoricalData(DateTime startTime, DateTime endTime, List<string>? customChannels = null)
         {

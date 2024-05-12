@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using static Ecowitt.EcowittDevice;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -12,9 +13,17 @@ namespace Ecowitt
 {
     public enum DataProcessingMode { Online, Offline };
 
+   
+
     internal class Controler
     {
-        
+        private class DataRequestTask
+        {
+            public Task<string?>? Task { get; set; }
+            public EcowittDevice Device { get; set; }
+            public int ConfiguredDeviceIndex { get; set; }
+            public int requestIndex { get; set; }              
+        }
 
         private Configuration _configuration;
         static readonly string[] data_samples = ["historical_data_3.json", "historical_data_2.json"];
@@ -89,7 +98,7 @@ namespace Ecowitt
         {         
             DateTime endTime = DateTime.Now;
             DateTime startTime;
-            if (initialRun) startTime = endTime.AddDays(-90);
+            if (initialRun) startTime = endTime.AddDays(-5);
             else startTime = endTime.AddMinutes(-360);
             // First get configured devices details to eliminate devices that do not exist in cloud API
             List<(Task<APIDeviceDetailData?>, EcowittDeviceConfiguration,int)> detailsRequestTasks = 
@@ -128,7 +137,7 @@ namespace Ecowitt
                 return;
             }
             // Now fetch the data for each device that has been confirmed to exist in the Ecowitt cloud using device configuration
-            List<(Task<string?>,EcowittDevice,int)> dataRequestTasks = new List<(Task<string?>,EcowittDevice,int)>();
+            List<DataRequestTask> dataRequestTasks = new List<DataRequestTask>();
             foreach (var configuredDevice in verifiedDevices)
             {            
                 var sb = new StringBuilder();
@@ -139,22 +148,119 @@ namespace Ecowitt
                 var channelsList = sb.ToString().Trim(',');
                 EcowittDevice device = new EcowittDevice(configuredDevice.Item1, _configuration.APIKey, _configuration.ApplicationKey);
                 Console.WriteLine("Fetching data for device: " + device.Configuration.MAC + " Channels: " +channelsList );
-                var rTask = device.ReadHistoricalData(startTime, endTime);
-                dataRequestTasks.Add(new(rTask, device,configuredDevice.Item2));
+                if (initialRun)
+                {
+                    DateTime currentStartTime = startTime;
+                    DateTime currentEndTime = currentStartTime.AddMinutes(1439);
+                    int idx = 0;
+                    while (currentStartTime < endTime.AddDays(-1))
+                    {
+                        DataRequestTask drTask = new DataRequestTask();
+                        drTask.Task = device.ReadHistoricalData(currentStartTime, currentEndTime);                        
+                        drTask.Device = device;
+                        drTask.ConfiguredDeviceIndex = configuredDevice.Item2;
+                        drTask.requestIndex = idx;
+                        dataRequestTasks.Add(drTask);
+                        currentStartTime = currentStartTime.AddDays(1);
+                        currentEndTime = currentStartTime.AddMinutes(1439);
+                        idx++;
+                        Thread.Sleep(1000);
+                    }
+                    DataRequestTask lastTask = new DataRequestTask();
+                    lastTask.Task = device.ReadHistoricalData(currentStartTime, endTime);
+                    lastTask.Device = device;
+                    lastTask.ConfiguredDeviceIndex = configuredDevice.Item2;
+                    lastTask.requestIndex = idx;
+                    dataRequestTasks.Add(lastTask);
+                }
+                else
+                {
+                    DataRequestTask drTask = new DataRequestTask();
+                    drTask.Task = device.ReadHistoricalData(startTime, endTime);
+                    drTask.Device = device;
+                    drTask.ConfiguredDeviceIndex = configuredDevice.Item2;
+                    drTask.requestIndex = 0;
+                    dataRequestTasks.Add(drTask);
+                }
                 // rate throttling in API - 1 req / sec
                 Thread.Sleep(1000);
             }
-            var tasksList = dataRequestTasks.Select(x => x.Item1).ToArray();
-            Task.WaitAll(tasksList);            
+            var tasksList = dataRequestTasks.Select(x => x.Task).ToArray();
+            Task.WaitAll(tasksList);
+            // sort data fetch results so they are properly sorted by requestIndex
+            dataRequestTasks.Sort((a, b) =>
+            {
+                if (a.ConfiguredDeviceIndex < b.ConfiguredDeviceIndex) return -1; 
+                if (a.ConfiguredDeviceIndex == b.ConfiguredDeviceIndex)
+                {
+                    if (a.requestIndex < b.requestIndex) return -1; 
+                    if (a.requestIndex > b.requestIndex) return 1;
+                    return 0;
+                }
+                return 1;
+            });
+            // Initialize output channels                        
+            Dictionary<string,IOutputChannel> outputChannels = new Dictionary<string,IOutputChannel>();
+            foreach (var verifiedDevice in verifiedDevices)
+            {
+                var deviceItem = devicesDetails.Where( x => x.Key == verifiedDevice.Item1.MAC).FirstOrDefault();
+                var deviceDetails = deviceItem.Value;
+                foreach (var inputChannel in verifiedDevice.Item1.ConfiguredChannels)
+                {
+                    string id = verifiedDevice.Item1.MAC + inputChannel;
+                    if (outputChannels.ContainsKey(id)) continue;
+                    OutputChannelMetadata meta = new OutputChannelMetadata()
+                    {
+                        DeviceName = deviceDetails.Name,
+                        MAC = deviceDetails.MAC,
+                        StationType = deviceDetails.StationType,
+                        DeviceCloudId = deviceDetails.Id,
+                        DeviceCreationTime = deviceDetails.CreateTime,
+                        DeviceLatitude = deviceDetails.Latitude,
+                        DeviceLongitude = deviceDetails.Longitude,
+                        ChannelName = inputChannel
+                    };
+                    OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
+                    {
+                    };
+                    var configuredOutputChannelID = _configuration.ConfigurationSettings.Devices[verifiedDevice.Item2].OutputChannel.ID;
+                    var configuredOutputChannel =
+                        _configuration.ConfigurationSettings.OutputChannels.Where(x => x.ID == configuredOutputChannelID).FirstOrDefault();
+                    if (configuredOutputChannel == null) throw new NullReferenceException("Fatal error can't find output channel configuration");
+                    IOutputChannel? outputChannel = null;
+                    switch (configuredOutputChannel.Type)
+                    {
+                        case ChannelTypes.File:
+                            {
+                                outputChannel = new CSVFileOutputChannel(configuredOutputChannel.URL, meta, channelConfig);
+                                if (!outputChannel.InitChannel(out string errorMessage))
+                                {
+                                    var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
+                                        inputChannel, verifiedDevice.Item1.MAC, errorMessage);
+                                    Console.WriteLine(em);
+                                }
+                                break;
+                            }
+                        default:
+                            {
+                                var em = string.Format("This output channel type is not implemented yet. {0}",
+                                    configuredOutputChannel.Type.ToString());
+                                //throw new NotImplementedException(em);
+                                Console.WriteLine(em);
+                                break;
+                            }
+                    }
+                    if (outputChannel!=null) outputChannels.Add(id,outputChannel);
+                }
+            }            
             // Using fetched data send it to output channels
             foreach (var task in dataRequestTasks)
             {
-                if (task.Item1.IsCompleted)
-                {
-                    List<DataChannelMetaData> dataInputChannels = new List<DataChannelMetaData>();
-                    List<DataChannelMetaData> channelsToBeProcessed = new List<DataChannelMetaData>();
-                    var s = task.Item1.Result;
+                if (task.Task.IsCompleted)
+                {                    
+                    var s = task.Task.Result;
                     var inputData = new EcowittInputData(s);
+                    List<DataChannelMetaData> dataInputChannels;
                     try
                     {
                         inputData.ProcessInput();
@@ -163,75 +269,35 @@ namespace Ecowitt
                     catch (Exception ex)
                     {
                         string em = string.Format("Failed to get input data for device: {0} . Error: {1}",
-                            task.Item2.Configuration.MAC, ex.Message);
+                            task.Device.Configuration.MAC, ex.Message);
                         Console.WriteLine(em);
                         continue;
                     }
                     foreach (var channel in dataInputChannels)
                     {
-                        if (task.Item2.Configuration.ConfiguredChannels.Contains(channel.ChannelName))
+                        string id = task.Device.Configuration.MAC + channel.ChannelName;
+                        if (outputChannels.ContainsKey(id))
                         {
-                            channelsToBeProcessed.Add(channel);
+                            var outputChannel = outputChannels[id];
+                            var inputChannel = inputData.GetChannel(channel.ChannelName);
+                            outputChannel.AddData(inputChannel);
                         }
-                    }
-                    var deviceDetails = devicesDetails.Where(x => x.Key == task.Item2.Configuration.MAC).FirstOrDefault().Value;
-                    if (deviceDetails == null) throw new NullReferenceException("Fatal error can't find configured device by MAC");
-                    foreach (var channel in channelsToBeProcessed)
-                    {                        
-                        OutputChannelMetadata meta = new OutputChannelMetadata()
+                        else
                         {
-                            DeviceName = deviceDetails.Name,
-                            MAC = deviceDetails.MAC,
-                            StationType = deviceDetails.StationType,
-                            DeviceCloudId = deviceDetails.Id,
-                            DeviceCreationTime = deviceDetails.CreateTime,
-                            DeviceLatitude = deviceDetails.Latitude,
-                            DeviceLongitude = deviceDetails.Longitude,
-                            ChannelName = channel.ChannelName
-                        };
-                        OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
-                        {
-                        };
-                        var configuredOutputChannelID = _configuration.ConfigurationSettings.Devices[task.Item3].OutputChannel.ID;
-                        var configuredOutputChannel =
-                            _configuration.ConfigurationSettings.OutputChannels.Where(x => x.ID == configuredOutputChannelID).FirstOrDefault();
-                        if (configuredOutputChannel == null) throw new NullReferenceException("Fatal error can't find output channel configuration");
-                        switch (configuredOutputChannel.Type)
-                        {
-                            case ChannelTypes.File:
-                                {
-                                    var outputChannel = new CSVFileOutputChannel(configuredOutputChannel.URL, meta, channelConfig);
-                                    if (outputChannel.InitChannel(out string errorMessage))
-                                    {
-                                        var channelData = inputData.GetChannel(channel.ChannelName);
-                                        if (channelData == null) continue;
-                                        outputChannel.AddData(channelData);
-                                        outputChannel.SaveData();
-                                    }
-                                    else
-                                    {
-                                        var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
-                                            channel.ChannelName, task.Item2.Configuration.MAC, errorMessage);
-                                        Console.WriteLine(em);
-                                    }
-                                    break;
-                                }
-                            default:
-                                {
-                                    var em = string.Format("This output channel type is not implemented yet. {0}",
-                                        configuredOutputChannel.Type.ToString());                                    
-                                    //throw new NotImplementedException(em);
-                                    Console.WriteLine(em);
-                                    break;
-                                }
+                            string em = string.Format("No valid output channel for device: {0} channel: {1}",
+                            task.Device.Configuration.MAC,channel.ChannelName);
+                            Console.WriteLine(em);
                         }
-                        
-                    }
+                    }                   
                 }
                 else
                 {
-                    Console.WriteLine("Failed to get data for device: " + task.Item2.Configuration.MAC);
+                    Console.WriteLine("Failed to get data for device: " + task.Device.Configuration.MAC + " request id: " + task.requestIndex);
                 }                
+            }
+            foreach (var outputChannel in outputChannels)
+            {
+                outputChannel.Value.SaveData();
             }
         }
 
