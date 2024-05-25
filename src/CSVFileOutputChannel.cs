@@ -1,4 +1,5 @@
-﻿using System;
+﻿using cmdline;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -50,22 +51,9 @@ namespace Ecowitt
         public void SaveData();
     }
 
-    internal class CSVFileOutputChannel : IChannelMetaData,IOutputChannel
+    internal class CSVFileOutputChannel : OutputChannel, IChannelMetaData,IOutputChannel
     {
         const string METADATAFILESUFFIX = "metadata";
-
-        public uint ChannelStartDate { get; private set; }
-
-        public uint ChannelEndDate { get; private set; }
-
-        public uint Count { get; private set; }
-
-        public string ChannelName { get; private set; }
-
-        public ChannelTypes ChannelType { get; private set; } = ChannelTypes.Blob;
-
-        public uint LastTimeStamp { get; private set; }
-        public uint FirstTimeStamp { get ; private set; }
         
         private Dictionary<string, string[]>? dataColumns = null;
         private string[]? timeRows = null;        
@@ -73,21 +61,18 @@ namespace Ecowitt
         private string filePath;
         private uint OriginalLastTimeStamp = 0;
         private OutputChannelMetadata metaData;
-        private OutputChannelBehaviorConfiguration configuration;
-        
 
-        public CSVFileOutputChannel(string? folderPath, OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) {
-            if (!sourceMetadata.Validate()) throw new ArgumentException("Invalid output channel configuration");
+        public new ChannelTypes ChannelType = ChannelTypes.File;
+
+
+        public CSVFileOutputChannel(string? folderPath, OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) 
+            : base(sourceMetadata, config)
+        {            
             if (string.IsNullOrWhiteSpace(folderPath)) filePath = "";
-                else filePath = folderPath;
-            ChannelName = sourceMetadata.ChannelName;
-            ChannelStartDate = 0;
-            ChannelEndDate = 0;
-            Count = 0;            
+                else filePath = folderPath;               
             metaDataFileName = string.Format("{0}_{1}", sourceMetadata.ChannelName, METADATAFILESUFFIX);
             if (filePath != "") metaDataFileName = filePath + "\\" + metaDataFileName;
-            metaData = sourceMetadata;
-            configuration = config;
+            metaData = sourceMetadata;            
         }
 
         public bool InitChannel(out string message)
