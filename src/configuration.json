@@ -41,9 +41,9 @@
       "URL": "data"
     },
     {
-      "Type": "Table",
+      "Type": "Blob",
       "ID": 2,
-      "URL": "."
+      "URL": "https://saecowittdatatesteuw01.blob.core.windows.net/data/"
     }
   ]
 }

@@ -6,45 +6,33 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using static Ecowitt.EcowittDevice;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure;
 
 namespace Ecowitt
 {
-
-
-    internal class OutputChannelBehaviorConfiguration
+    internal class BlobOutputChannel : OutputChannel, IChannelMetaData,IOutputChannel
     {
-        public bool AllowLocationChanges { get; set; } = false;
-        public bool AllowStationTypeChange { get; set; } = false;
-    }
-
-    internal interface IOutputChannel
-    {
-        public bool InitChannel(out string message);
-        public void AddData(InputDataChannel channel);
-        public void SaveData();
-    }
-
-    internal class CSVFileOutputChannel : OutputChannel, IChannelMetaData,IOutputChannel
-    {
-        const string METADATAFILESUFFIX = "metadata";
-        
+                
         private Dictionary<string, string[]>? dataColumns = null;
         private string[]? timeRows = null;        
         private string metaDataFileName;
-        private string filePath;
+        private Uri SAUri;
+        private BlobClient client;
         private uint OriginalLastTimeStamp = 0;
         private OutputChannelMetadata metaData;
 
         public new ChannelTypes ChannelType = ChannelTypes.File;
 
 
-        public CSVFileOutputChannel(string? folderPath, OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) 
+        public BlobOutputChannel(string? blobURL, OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) 
             : base(sourceMetadata, config)
-        {            
-            if (string.IsNullOrWhiteSpace(folderPath)) filePath = "";
-                else filePath = folderPath;               
-            metaDataFileName = string.Format("{0}_{1}", sourceMetadata.ChannelName, METADATAFILESUFFIX);
-            if (filePath != "") metaDataFileName = filePath + "\\" + metaDataFileName;
+        {
+            if (string.IsNullOrWhiteSpace(blobURL)) throw new NullReferenceException("Blob URL is empty");
+            UriCreationOptions options = new UriCreationOptions();
+            if (!Uri.TryCreate(blobURL+ChannelName, in options, out SAUri)) throw new ArgumentException("Invalid URL provided");
+            client = new BlobClient(SAUri);
             metaData = sourceMetadata;            
         }
 
@@ -54,17 +42,14 @@ namespace Ecowitt
             dataColumns = null;            
             message = "";
             try
-            {
-                string? fileContent;
-                using (StreamReader sr = new StreamReader(metaDataFileName))
-                {
-                    fileContent = sr.ReadToEnd();                    
-                }
-                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent);
+            {                
+                BlobOpenReadOptions options = new BlobOpenReadOptions(false);
+                var blobProperties = client.GetProperties();
+                var blobMetadata = blobProperties.Value.Metadata;                  
+                var existingMetaData = OutputChannelMetadata.ParseBlobMetadata(blobMetadata);
                 if (existingMetaData == null)
                 {
-                    message = "Deserialization failed to produce non-null data";
-                    return false;
+                    throw new InvalidDataException();
                 }
                 if (existingMetaData.TemperatureUnit != metaData.TemperatureUnit)
                 {
@@ -113,14 +98,12 @@ namespace Ecowitt
             }
             catch (Exception ex)
             {
-                if (ex is FileNotFoundException || ex is InvalidDataException)
-                {                    
-                    using (StreamWriter sw = new StreamWriter(metaDataFileName,
-                        new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Create} ))
+                if (ex is RequestFailedException || ex is InvalidDataException)
+                {
+                    using (var stream = client.OpenWrite(true))
                     {
-                        JsonSerializerOptions options = new JsonSerializerOptions() {  WriteIndented = true };
-                        var s = JsonSerializer.Serialize(metaData, options);
-                        sw.WriteLine(s);    
+                        var blobMetadata = metaData.ConvertToBlobMetadata();
+                        client.SetMetadata(blobMetadata);
                     }
                     return true;
                 }
