@@ -14,8 +14,7 @@
       "WindSpeedUnit": 6,
       "RainfallUnit": 12,
       "SolarIrradianceUnit":  16,
-      "OutputChannel": {
-        "Type": "Blob",
+      "OutputChannel": {        
         "ID": 1,
         "CustomChannelsNames": {
           "indoor": "Garage"
@@ -29,9 +28,8 @@
         "pressure",
         "soil_ch1"
       ],
-      "OutputChannel": {
-        "Type": "Table",
-        "ID": 1,
+      "OutputChannel": {        
+        "ID": 2,
         "TimeStampFormat": "Timestamp"
       }
     }
@@ -44,12 +42,12 @@
     },
     {
       "Type": "Table",
-      "ID": 1,
+      "ID": 2,
       "URL": "https://"
     },
     {
       "Type": "File",
-      "ID": 1,
+      "ID": 3,
       "URL": "."
     }
   ]
