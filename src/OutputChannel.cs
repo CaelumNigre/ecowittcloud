@@ -2,6 +2,7 @@
 using Ecowitt;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -127,6 +128,9 @@ namespace Ecowitt
         public uint LastTimeStamp { get; protected set; }
         public uint FirstTimeStamp { get; protected set; }
         protected OutputChannelBehaviorConfiguration configuration;
+        protected Dictionary<string, string[]>? dataColumns = null;
+        protected string[]? timeRows = null;
+        protected OutputChannelMetadata metaData;
 
         public virtual ChannelTypes ChannelType { get; private set; } = ChannelTypes.Invalid;
 
@@ -138,6 +142,104 @@ namespace Ecowitt
             ChannelEndDate = 0;
             Count = 0;
             configuration = config;
+            metaData = sourceMetadata;
+        }
+
+        public virtual void AddData(InputDataChannel channel)
+        {
+            // assumptions about data series
+            // 1. all sensors have the same number of data points
+            // 2. all sensors have the same timestamps at the same positions in data set
+            // 3. data series sorted on timestamp
+            // 4. data is added in sequence (oldest data added first)
+            if (channel == null || channel.Data == null || !channel.Data.Any()) return;
+
+            var currentTimeRows = new string[channel.Data.Values.First().Data?.Count ?? 0];
+            var currentDataColumns = new Dictionary<string, string[]>();
+            bool firstDataColumn = true;
+            string firstColumnKey = "";
+            foreach (var sensor in channel.Data)
+            {
+                if (sensor.Value.Data == null || !sensor.Value.Data.Any()) continue;
+                int i = 0;
+                var columnName = string.Format("{0}_{1}", sensor.Key, sensor.Value.Unit);
+                currentDataColumns.Add(columnName, new string[sensor.Value.Data.Count]);
+                if (firstDataColumn)
+                {
+                    firstColumnKey = sensor.Key;
+                    foreach (var value in sensor.Value.Data)
+                    {
+                        if (string.IsNullOrWhiteSpace(value.Item1)) throw new NullReferenceException("Null timestamp in dataset");
+                        uint ts = 0;
+                        if (!UInt32.TryParse(value.Item1, out ts)) throw new InvalidDataException("Timestamp format error");
+                        if (ts <= LastTimeStamp) continue;
+                        currentTimeRows[i] = value.Item1;
+                        currentDataColumns[columnName][i] = value.Item2 ?? "";
+                        i++;
+                    }
+                }
+                else
+                {
+                    foreach (var value in sensor.Value.Data)
+                    {
+                        uint ts = 0;
+                        if (!UInt32.TryParse(value.Item1, out ts)) throw new InvalidDataException("Timestamp format error");
+                        if (ts <= LastTimeStamp) continue;
+                        if (currentTimeRows[i] != value.Item1)
+                        {
+                            var msg = string.Format("Timestamp value in sensor {0} at position {1} differs from sensor {2} timestamp",
+                                currentDataColumns, i, firstColumnKey);
+                            throw new InvalidDataException(msg);
+                        }
+                        currentDataColumns[columnName][i] = value.Item2 ?? "";
+                        i++;
+                    }
+                }
+            }
+            if (timeRows == null)
+            {
+                timeRows = currentTimeRows;
+                dataColumns = currentDataColumns;
+                if (currentTimeRows.Any())
+                {
+                    FirstTimeStamp = UInt32.Parse(currentTimeRows[0]);
+                    LastTimeStamp = UInt32.Parse(currentTimeRows.Last());
+                }
+            }
+            else
+            {
+                var newLength = timeRows.Length + currentTimeRows.Length;
+                var newTimeRows = new string[newLength];
+                for (int i = 0; i < newLength; i++)
+                {
+                    if (i < timeRows.Length) newTimeRows[i] = timeRows[i];
+                    else newTimeRows[i] = currentTimeRows[i - timeRows.Length];
+                }
+                timeRows = newTimeRows;
+                if (dataColumns != null)
+                {
+                    var newDataColumns = new Dictionary<string, string[]>();
+                    foreach (var column in dataColumns)
+                    {
+                        if (!currentDataColumns.ContainsKey(column.Key))
+                        {
+                            var msg = string.Format("Newly added values do not contain column named {0}",
+                                    column.Key);
+                            throw new InvalidDataException(msg);
+                        }
+                        newLength = column.Value.Length + currentDataColumns[column.Key].Length;
+                        var newDataRows = new string[newLength];
+                        for (int i = 0; i < newLength; i++)
+                        {
+                            if (i < column.Value.Length) newDataRows[i] = column.Value[i];
+                            else newDataRows[i] = currentDataColumns[column.Key][i - column.Value.Length];
+                        }
+                        newDataColumns.Add(column.Key, newDataRows);
+                    }
+                    dataColumns = newDataColumns;
+                }
+                LastTimeStamp = UInt32.Parse(currentTimeRows.Last());
+            }
         }
 
     }

@@ -1,5 +1,4 @@
-﻿using cmdline;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,31 +8,35 @@ using static Ecowitt.EcowittDevice;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure;
+using Azure.Storage.Blobs.Specialized;
+using Azure.Identity;
 
 namespace Ecowitt
 {
     internal class BlobOutputChannel : OutputChannel, IChannelMetaData,IOutputChannel
     {
-                
-        private Dictionary<string, string[]>? dataColumns = null;
-        private string[]? timeRows = null;        
+        const string METADATABLOBNAME = "metadata";
+        
         private string metaDataFileName;
-        private Uri SAUri;
-        private BlobClient client;
-        private uint OriginalLastTimeStamp = 0;
-        private OutputChannelMetadata metaData;
+        private Uri SAUri;        
+        private uint OriginalLastTimeStamp = 0;        
+        private DefaultAzureCredential _credentials;
+        private string blobBase;
 
-        public new ChannelTypes ChannelType = ChannelTypes.File;
+        public new ChannelTypes ChannelType = ChannelTypes.Blob;
 
 
-        public BlobOutputChannel(string? blobURL, OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) 
+        public BlobOutputChannel(string? blobURL, DefaultAzureCredential credentials, 
+            OutputChannelMetadata sourceMetadata, OutputChannelBehaviorConfiguration config) 
             : base(sourceMetadata, config)
         {
             if (string.IsNullOrWhiteSpace(blobURL)) throw new NullReferenceException("Blob URL is empty");
+            if (credentials == null) throw new NullReferenceException("No Azure credentials provided");
             UriCreationOptions options = new UriCreationOptions();
-            if (!Uri.TryCreate(blobURL+ChannelName, in options, out SAUri)) throw new ArgumentException("Invalid URL provided");
-            client = new BlobClient(SAUri);
+            if (!Uri.TryCreate(blobURL, in options, out SAUri)) throw new ArgumentException("Invalid URL provided");
+            blobBase = blobURL;
             metaData = sourceMetadata;            
+            _credentials = credentials;
         }
 
         public bool InitChannel(out string message)
@@ -41,15 +44,19 @@ namespace Ecowitt
             timeRows = null;
             dataColumns = null;            
             message = "";
+            BlobClient client = new BlobClient(new Uri(blobBase + ChannelName + "/" + METADATABLOBNAME),_credentials);
             try
-            {                
-                BlobOpenReadOptions options = new BlobOpenReadOptions(false);
-                var blobProperties = client.GetProperties();
-                var blobMetadata = blobProperties.Value.Metadata;                  
-                var existingMetaData = OutputChannelMetadata.ParseBlobMetadata(blobMetadata);
+            {
+                string? fileContent;                
+                using (StreamReader sr = new StreamReader(client.OpenRead()))
+                {
+                    fileContent = sr.ReadToEnd();
+                }
+                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent);
                 if (existingMetaData == null)
                 {
-                    throw new InvalidDataException();
+                    message = "Deserialization failed to produce non-null data";
+                    return false;
                 }
                 if (existingMetaData.TemperatureUnit != metaData.TemperatureUnit)
                 {
@@ -98,12 +105,13 @@ namespace Ecowitt
             }
             catch (Exception ex)
             {
-                if (ex is RequestFailedException || ex is InvalidDataException)
+                if (ex is RequestFailedException)
                 {
-                    using (var stream = client.OpenWrite(true))
-                    {
-                        var blobMetadata = metaData.ConvertToBlobMetadata();
-                        client.SetMetadata(blobMetadata);
+                    using (StreamWriter sw = new StreamWriter(client.OpenWrite(true)))
+                    {                        
+                        JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+                        var s = JsonSerializer.Serialize(metaData, options);
+                        sw.WriteLine(s);                        
                     }
                     return true;
                 }
@@ -114,109 +122,12 @@ namespace Ecowitt
         private void UpdateMetadata()
         {
             metaData.LastTimestamp = LastTimeStamp;
-            using (StreamWriter sw = new StreamWriter(metaDataFileName,
-                new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Truncate }))
+            BlobClient client = new BlobClient(new Uri(blobBase + ChannelName + "/" + METADATABLOBNAME),_credentials);
+            using (StreamWriter sw = new StreamWriter(client.OpenWrite(true)))
             {
                 var s = JsonSerializer.Serialize(metaData);
                 sw.WriteLine(s);
                 sw.Flush();
-            }
-        }
-
-        public void AddData(InputDataChannel channel)
-        {
-            // assumptions about data series
-            // 1. all sensors have the same number of data points
-            // 2. all sensors have the same timestamps at the same positions in data set
-            // 3. data series sorted on timestamp
-            // 4. data is added in sequence (oldest data added first)
-            if (channel == null || channel.Data == null || !channel.Data.Any()) return;            
-            
-            var currentTimeRows = new string[channel.Data.Values.First().Data?.Count ?? 0];                
-            var currentDataColumns = new Dictionary<string, string[]>();
-            bool firstDataColumn = true;            
-            string firstColumnKey = "";
-            foreach (var sensor in channel.Data)
-            {
-                if (sensor.Value.Data == null || !sensor.Value.Data.Any()) continue;
-                int i = 0;
-                var columnName = string.Format("{0}_{1}",sensor.Key,sensor.Value.Unit);
-                currentDataColumns.Add(columnName, new string[sensor.Value.Data.Count]);
-                if (firstDataColumn)
-                {
-                    firstColumnKey = sensor.Key;
-                    foreach (var value in sensor.Value.Data)
-                    {
-                        if (string.IsNullOrWhiteSpace(value.Item1)) throw new NullReferenceException("Null timestamp in dataset");
-                        uint ts = 0;
-                        if (!UInt32.TryParse(value.Item1, out ts)) throw new InvalidDataException("Timestamp format error");
-                        if (ts <= LastTimeStamp) continue;
-                        currentTimeRows[i] = value.Item1;
-                        currentDataColumns[columnName][i] = value.Item2 ?? "";
-                        i++;
-                    }                    
-                }
-                else
-                {
-                    foreach (var value in sensor.Value.Data)
-                    {
-                        uint ts = 0;
-                        if (!UInt32.TryParse(value.Item1, out ts)) throw new InvalidDataException("Timestamp format error");
-                        if (ts <= LastTimeStamp) continue;
-                        if (currentTimeRows[i] != value.Item1)
-                        {
-                            var msg = string.Format("Timestamp value in sensor {0} at position {1} differs from sensor {2} timestamp",
-                                currentDataColumns,i,firstColumnKey);
-                            throw new InvalidDataException(msg);
-                        }
-                        currentDataColumns[columnName][i] = value.Item2 ?? "";
-                        i++;
-                    }
-                }                    
-            }
-            if (timeRows == null)
-            {
-                timeRows = currentTimeRows;
-                dataColumns = currentDataColumns;
-                if (currentTimeRows.Any())
-                {
-                    FirstTimeStamp = UInt32.Parse(currentTimeRows[0]);
-                    LastTimeStamp = UInt32.Parse(currentTimeRows.Last());
-                }                
-            }
-            else
-            {
-                var newLength = timeRows.Length + currentTimeRows.Length;
-                var newTimeRows = new string[newLength];
-                for (int i = 0; i < newLength; i++)
-                {
-                    if (i < timeRows.Length) newTimeRows[i] = timeRows[i];
-                    else newTimeRows[i] = currentTimeRows[i - timeRows.Length];
-                }
-                timeRows = newTimeRows;
-                if (dataColumns != null)
-                {
-                    var newDataColumns = new Dictionary<string, string[]>();
-                    foreach (var column in dataColumns)
-                    {
-                        if (!currentDataColumns.ContainsKey(column.Key))
-                        {
-                            var msg = string.Format("Newly added values do not contain column named {0}",
-                                    column.Key);
-                            throw new InvalidDataException(msg);
-                        }
-                        newLength = column.Value.Length + currentDataColumns[column.Key].Length;
-                        var newDataRows = new string[newLength];
-                        for (int i = 0; i < newLength; i++)
-                        {
-                            if (i < column.Value.Length) newDataRows[i] = column.Value[i];
-                            else newDataRows[i] = currentDataColumns[column.Key][i - column.Value.Length];
-                        }
-                        newDataColumns.Add(column.Key, newDataRows);
-                    }
-                    dataColumns = newDataColumns;
-                }
-                LastTimeStamp = UInt32.Parse(currentTimeRows.Last());
             }
         }
 
@@ -229,11 +140,8 @@ namespace Ecowitt
             int year = dataStartTime.Year;
             int firstRowOfNextYear = -1;
             if (year == originalDataStartTime.Year)
-            {
-                string fileName = string.Format("{0}_{1}", ChannelName, year);
-                if (filePath != "") fileName = filePath + "\\" + fileName;
-                using (StreamWriter sw = new StreamWriter(fileName,
-                    new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Append }))
+            {                
+                using (StreamWriter sw = new StreamWriter(new MemoryStream()))
                 {
                     StringBuilder sb = new StringBuilder();
                     if (sw.BaseStream.Length == 0)
@@ -266,15 +174,18 @@ namespace Ecowitt
                         }                            
                     }
                     sw.Flush();
-                }
+                    sw.BaseStream.Seek(0, SeekOrigin.Begin);
+                    string blobName = string.Format("{0}", year);
+                    AppendBlobClient client = new AppendBlobClient(new Uri(blobBase + ChannelName + "/" + blobName),_credentials);
+                    AppendBlobAppendBlockOptions options = new AppendBlobAppendBlockOptions();
+                    client.CreateIfNotExists();
+                    client.AppendBlock(sw.BaseStream,options);
+                }              
             }
             if (year > originalDataStartTime.Year || firstRowOfNextYear > 0)
             {
-                if (firstRowOfNextYear > 0) year = year + 1;
-                string fileName = string.Format("{0}_{1}", ChannelName, year);
-                if (filePath != "") fileName = filePath + "\\" + fileName;
-                using (StreamWriter sw = new StreamWriter(fileName,
-                    new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.CreateNew }))
+                if (firstRowOfNextYear > 0) year = year + 1;                
+                using (StreamWriter sw = new StreamWriter(new MemoryStream()))
                 {
                     StringBuilder sb = new StringBuilder();                    
                     sb.Append(@"""Timestamp""");
@@ -294,6 +205,12 @@ namespace Ecowitt
                         sw.WriteLine(sb.ToString());                    
                     }
                     sw.Flush();
+                    sw.BaseStream.Seek(0, SeekOrigin.Begin);    
+                    string blobName = string.Format("{0}", year);
+                    AppendBlobClient client = new AppendBlobClient(new Uri(blobBase + ChannelName + "/" + blobName),_credentials);
+                    AppendBlobAppendBlockOptions options = new AppendBlobAppendBlockOptions();
+                    client.CreateIfNotExists();
+                    client.AppendBlock(sw.BaseStream, options);
                 }
             }
             UpdateMetadata();

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Azure.Identity;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -237,6 +238,21 @@ namespace Ecowitt
                                 {
                                     var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
                                         inputChannel, verifiedDevice.Item1.MAC, errorMessage);
+                                    Console.WriteLine(em);
+                                    outputChannel = null;
+                                }
+                                break;
+                            }
+                        case ChannelTypes.Blob:
+                            {
+                                outputChannel = new BlobOutputChannel(configuredOutputChannel.URL, 
+                                    new DefaultAzureCredential(_configuration.AzureCredential), 
+                                    meta, channelConfig);
+                                if (!outputChannel.InitChannel(out string errorMessage))
+                                {
+                                    var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
+                                        inputChannel, verifiedDevice.Item1.MAC, errorMessage);
+                                    outputChannel = null;
                                     Console.WriteLine(em);
                                 }
                                 break;

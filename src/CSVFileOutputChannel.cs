@@ -1,5 +1,4 @@
-﻿using cmdline;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -28,12 +27,9 @@ namespace Ecowitt
     {
         const string METADATAFILESUFFIX = "metadata";
         
-        private Dictionary<string, string[]>? dataColumns = null;
-        private string[]? timeRows = null;        
         private string metaDataFileName;
         private string filePath;
-        private uint OriginalLastTimeStamp = 0;
-        private OutputChannelMetadata metaData;
+        private uint OriginalLastTimeStamp = 0;        
 
         public new ChannelTypes ChannelType = ChannelTypes.File;
 
@@ -45,7 +41,7 @@ namespace Ecowitt
                 else filePath = folderPath;               
             metaDataFileName = string.Format("{0}_{1}", sourceMetadata.ChannelName, METADATAFILESUFFIX);
             if (filePath != "") metaDataFileName = filePath + "\\" + metaDataFileName;
-            metaData = sourceMetadata;            
+                
         }
 
         public bool InitChannel(out string message)
