@@ -75,6 +75,8 @@ namespace Ecowitt
         public int ID { get; set; }
         public Dictionary<string, string> CustomChannelsNames { get; set; } = new Dictionary<string, string>();
         public string? TimeStampFormat { get; set; } = "Timestamp";
+        public bool LocationChangesAllowed { get; set; } = false;
+        public bool StationTypeChangesAllowed { get; set; } = false;    
     }
 
     internal class OutputChannelDefinition

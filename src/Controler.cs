@@ -221,10 +221,14 @@ namespace Ecowitt
                         DeviceLongitude = deviceDetails.Longitude,
                         ChannelName = inputChannel
                     };
+                    OutputChannelConfiguration currentChannelConfigurationSettings =
+                        _configuration.ConfigurationSettings.Devices[verifiedDevice.Item2].OutputChannel;
                     OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                     {
+                        AllowLocationChange = currentChannelConfigurationSettings.LocationChangesAllowed,
+                        AllowStationTypeChange = currentChannelConfigurationSettings.StationTypeChangesAllowed
                     };
-                    var configuredOutputChannelID = _configuration.ConfigurationSettings.Devices[verifiedDevice.Item2].OutputChannel.ID;
+                    var configuredOutputChannelID = currentChannelConfigurationSettings.ID;
                     var configuredOutputChannel =
                         _configuration.ConfigurationSettings.OutputChannels.Where(x => x.ID == configuredOutputChannelID).FirstOrDefault();
                     if (configuredOutputChannel == null) throw new NullReferenceException("Fatal error can't find output channel configuration");

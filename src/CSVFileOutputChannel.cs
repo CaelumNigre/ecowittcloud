@@ -12,7 +12,7 @@ namespace Ecowitt
 
     internal class OutputChannelBehaviorConfiguration
     {
-        public bool AllowLocationChanges { get; set; } = false;
+        public bool AllowLocationChange { get; set; } = false;
         public bool AllowStationTypeChange { get; set; } = false;
     }
 
@@ -87,7 +87,7 @@ namespace Ecowitt
                     message = "Solar irradiance units changed";
                     return false;
                 }
-                if (!configuration.AllowLocationChanges)
+                if (!configuration.AllowLocationChange)
                 {
                     if (existingMetaData.DeviceLatitude != metaData.DeviceLatitude || existingMetaData.DeviceLongitude != metaData.DeviceLongitude)
                     {

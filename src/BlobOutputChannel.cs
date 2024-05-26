@@ -83,7 +83,7 @@ namespace Ecowitt
                     message = "Solar irradiance units changed";
                     return false;
                 }
-                if (!configuration.AllowLocationChanges)
+                if (!configuration.AllowLocationChange)
                 {
                     if (existingMetaData.DeviceLatitude != metaData.DeviceLatitude || existingMetaData.DeviceLongitude != metaData.DeviceLongitude)
                     {

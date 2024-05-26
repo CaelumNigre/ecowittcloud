@@ -14,12 +14,14 @@
       "WindSpeedUnit": 6,
       "RainfallUnit": 12,
       "SolarIrradianceUnit": 16,
-      "OutputChannel": {        
+      "OutputChannel": {
         "ID": 1,
         "CustomChannelsNames": {
           "indoor": "Garage"
         },
-        "TimeStampFormat": "UTC"
+        "TimeStampFormat": "UTC",
+        "LocationChangesAllowed": false,
+        "StationTypeChangesAllowed": true
       }
     },
     {
