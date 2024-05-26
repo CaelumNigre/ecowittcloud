@@ -223,6 +223,7 @@ namespace Ecowitt
                     };
                     OutputChannelConfiguration currentChannelConfigurationSettings =
                         _configuration.ConfigurationSettings.Devices[verifiedDevice.Item2].OutputChannel;
+                    meta.TimestampFormat = currentChannelConfigurationSettings.TimeStampFormat;
                     OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                     {
                         AllowLocationChange = currentChannelConfigurationSettings.LocationChangesAllowed,

@@ -25,6 +25,7 @@ namespace Ecowitt
         public EcowittWindSpeedUnits WindSpeedUnit { get; set; } = EcowittWindSpeedUnits.mps;
         public EcowittRainfallUnits RainfallUnit { get; set; } = EcowittRainfallUnits.mm;
         public EcowittSolarIrradianceUnits SolarIrradianceUnit { get; set; } = EcowittSolarIrradianceUnits.Wpm;
+        public TimestampFormats TimestampFormat { get; set; } = TimestampFormats.Timestamp;
         public OutputChannelConfiguration OutputChannel { get; set; } = new OutputChannelConfiguration();
 
 

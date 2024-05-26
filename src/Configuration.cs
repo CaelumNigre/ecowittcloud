@@ -59,12 +59,7 @@ namespace Ecowitt
                 {
                     errorMessage = "Invalid channel ID";
                     return false;
-                }
-                if (!Enum.TryParse(typeof(TimestampFormats), OutputChannel.TimeStampFormat, out var timestampFormat))
-                {
-                    errorMessage = "Invalid timestamp format: " + OutputChannel.TimeStampFormat;
-                    return false;
-                }
+                }                
             }
             return true;
         }
@@ -74,7 +69,7 @@ namespace Ecowitt
     {        
         public int ID { get; set; }
         public Dictionary<string, string> CustomChannelsNames { get; set; } = new Dictionary<string, string>();
-        public string? TimeStampFormat { get; set; } = "Timestamp";
+        public TimestampFormats TimeStampFormat { get; set; } = TimestampFormats.Timestamp;
         public bool LocationChangesAllowed { get; set; } = false;
         public bool StationTypeChangesAllowed { get; set; } = false;    
     }

@@ -140,11 +140,15 @@ namespace Ecowitt
             int year = dataStartTime.Year;
             int firstRowOfNextYear = -1;
             if (year == originalDataStartTime.Year)
-            {                
+            {
+                string blobName = string.Format("{0}", year);
+                AppendBlobClient client = new AppendBlobClient(new Uri(blobBase + ChannelName + "/" + blobName), _credentials);
+                AppendBlobAppendBlockOptions options = new AppendBlobAppendBlockOptions();
+                var blob = client.CreateIfNotExists();
                 using (StreamWriter sw = new StreamWriter(new MemoryStream()))
                 {
                     StringBuilder sb = new StringBuilder();
-                    if (sw.BaseStream.Length == 0)
+                    if (blob != null)
                     {
                         sb.Append(@"""Timestamp""");
                         foreach (var column in dataColumns)
@@ -174,11 +178,7 @@ namespace Ecowitt
                         }                            
                     }
                     sw.Flush();
-                    sw.BaseStream.Seek(0, SeekOrigin.Begin);
-                    string blobName = string.Format("{0}", year);
-                    AppendBlobClient client = new AppendBlobClient(new Uri(blobBase + ChannelName + "/" + blobName),_credentials);
-                    AppendBlobAppendBlockOptions options = new AppendBlobAppendBlockOptions();
-                    client.CreateIfNotExists();
+                    sw.BaseStream.Seek(0, SeekOrigin.Begin);                    
                     client.AppendBlock(sw.BaseStream,options);
                 }              
             }
