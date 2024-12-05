@@ -353,7 +353,14 @@ namespace Ecowitt
                     OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                     {
                     };
-                    var outputChannel = new CSVFileOutputChannel(null,null,channelConfig);
+                    OutputChannelMetadata channelMetadata = new OutputChannelMetadata()
+                    {
+                        ChannelName = channel.ChannelName,
+                        DeviceName = "ecowitt_dummy",
+                        StationType = "dummy_station_type", 
+                        MAC = "00:00:00:00:00:00"
+                    };
+                    var outputChannel = new CSVFileOutputChannel(null,channelMetadata,channelConfig);
                     outputChannel.InitChannel(out string message);
                     var channelData = inputData.GetChannel(channel.ChannelName);
                     if (channelData == null) continue;

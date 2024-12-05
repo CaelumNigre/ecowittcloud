@@ -4,11 +4,10 @@ using System.CommandLine.NamingConventionBinder;
 
 var rootCommand = new RootCommand
 {
-    new Argument<string>(
-        "mode",
-        () => "offline",
-        "Specify the processing mode: online or offline (using data samples in "),
-    new Argument<bool>(
+    new Option<string>(new string[] { "--mode", "-m" },
+        getDefaultValue: () => "offline",
+        description: "Specify the processing mode: online or offline (using data samples in "),
+    new Option<bool>(
         "--initial",
         () => false,
         "Run the processing in the initialization mode")
@@ -34,3 +33,4 @@ rootCommand.Handler = CommandHandler.Create<string,bool>((mode, initial) =>
     Thread.Sleep(2000);
     return 0;
 });
+return rootCommand.InvokeAsync(args).Result;
