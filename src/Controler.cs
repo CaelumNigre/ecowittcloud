@@ -89,8 +89,7 @@ namespace Ecowitt
         public void RunProcessing(DataProcessingMode mode, bool initialRun = false)
         {
             if (!hasConfig) throw new InvalidOperationException("No configuration to start processing");
-
-            
+                        
             if (mode == DataProcessingMode.Offline) RunOfflineProcessing();
             if (mode == DataProcessingMode.Online) RunOnlineProcessing(initialRun);
         }
