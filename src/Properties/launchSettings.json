@@ -1,7 +1,23 @@
 {
   "profiles": {
-    "cmdline": {
+    "WSL": {
+      "commandName": "WSL2",
+      "environmentVariables": {
+        "KV_NAME": "kv-ecowitt-test-euw-01",
+        "TENANT_ID": "938414a4-7ba8-49b9-83a2-097809156c5a"
+      },
+      "distributionName": ""
+    },
+    "cmdline offline": {
       "commandName": "Project",
+      "environmentVariables": {
+        "KV_NAME": "kv-ecowitt-test-euw-01",
+        "TENANT_ID": "938414a4-7ba8-49b9-83a2-097809156c5a"
+      }
+    },
+    "cmdline online": {
+      "commandName": "Project",
+      "commandLineArgs": "--mode online",
       "environmentVariables": {
         "KV_NAME": "kv-ecowitt-test-euw-01",
         "TENANT_ID": "938414a4-7ba8-49b9-83a2-097809156c5a"

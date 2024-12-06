@@ -59,12 +59,7 @@ namespace Ecowitt
                 {
                     errorMessage = "Invalid channel ID";
                     return false;
-                }
-                if (!Enum.TryParse(typeof(TimestampFormats), OutputChannel.TimeStampFormat, out var timestampFormat))
-                {
-                    errorMessage = "Invalid timestamp format: " + OutputChannel.TimeStampFormat;
-                    return false;
-                }
+                }                
             }
             return true;
         }
@@ -74,7 +69,9 @@ namespace Ecowitt
     {        
         public int ID { get; set; }
         public Dictionary<string, string> CustomChannelsNames { get; set; } = new Dictionary<string, string>();
-        public string? TimeStampFormat { get; set; } = "Timestamp";
+        public TimestampFormats TimeStampFormat { get; set; } = TimestampFormats.Timestamp;
+        public bool LocationChangesAllowed { get; set; } = false;
+        public bool StationTypeChangesAllowed { get; set; } = false;    
     }
 
     internal class OutputChannelDefinition
@@ -99,6 +96,7 @@ namespace Ecowitt
         private IConfigurationRoot _secretsConfig;          
         
         public ConfigurationData ConfigurationSettings { get; private set;}
+        public DefaultAzureCredentialOptions AzureCredential { get; private set; }
         public string? APIKey { get; private set; }
         public string? ApplicationKey { get; private set; }
         public readonly bool UseKeyVaultForSecrets;
@@ -118,9 +116,9 @@ namespace Ecowitt
                 var kv = _environmentConfig["KV_NAME"];
                 if (string.IsNullOrEmpty(kv)) throw new InvalidOperationException("No Key Vault configured");
                 var tid = _environmentConfig["TENANT_ID"];
-                DefaultAzureCredentialOptions _defaultAzureCredentialOptions;  
+                
                 if (tid != null)
-                    _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
+                    AzureCredential = new DefaultAzureCredentialOptions()
                     {
                         ExcludeAzureCliCredential = true,
                         ExcludeAzurePowerShellCredential = true,
@@ -129,7 +127,7 @@ namespace Ecowitt
                     };
                 else
                 {
-                    _defaultAzureCredentialOptions = new DefaultAzureCredentialOptions()
+                    AzureCredential = new DefaultAzureCredentialOptions()
                     {
                         ExcludeAzureCliCredential = true,
                         ExcludeAzurePowerShellCredential = true,
@@ -138,7 +136,7 @@ namespace Ecowitt
                 }
                 var _keyVaultUri = new Uri("https://" + kv + ".vault.azure.net");
                 _secretsConfig = new ConfigurationBuilder()
-                    .AddAzureKeyVault(_keyVaultUri, new DefaultAzureCredential(_defaultAzureCredentialOptions))
+                    .AddAzureKeyVault(_keyVaultUri, new DefaultAzureCredential(AzureCredential))
                     .Build();                
             }
             else

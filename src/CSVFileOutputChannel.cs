@@ -1,46 +1,19 @@
-﻿using cmdline;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using static Ecowitt.EcowittDevice;
 
 namespace Ecowitt
 {
-    internal class OutputChannelMetadata
-    {
-        public required string ChannelName { get; set; } = "";
-        public uint LastTimestamp { get; set; }
-        public required string DeviceName { get; set; } = "";
-        public required string StationType { get; set; } = "";
-        public required string MAC { get; set; } = "00:00:00:00:00:00";
-        public uint DeviceCreationTime { get;set; }
-        public int DeviceCloudId { get; set; }
-        public double DeviceLongitude { get; set; }
-        public double DeviceLatitude { get; set; }
-        public EcowittTemperatureUnits TemperatureUnit { get; set; } = EcowittTemperatureUnits.Celsius;
-        public EcowittPressureUnits PressureUnit { get; set; } = EcowittPressureUnits.hPa;
-        public EcowittWindSpeedUnits WindSpeedUnit { get; set; } = EcowittWindSpeedUnits.mps;
-        public EcowittRainfallUnits RainfallUnit { get; set; } = EcowittRainfallUnits.mm;
-        public EcowittSolarIrradianceUnits SolarIrradianceUnit { get; set; } = EcowittSolarIrradianceUnits.Wpm;
-        public OutputChannelConfiguration OutputChannel { get; set; } = new OutputChannelConfiguration();
 
-
-        public bool Validate()
-        {
-            if (MAC.Length!=17) return false;
-            if (string.IsNullOrWhiteSpace(ChannelName)) return false;
-            if (DeviceLatitude > 90.0 || DeviceLatitude < -90.0) return false;
-            if (DeviceLongitude > 180.0 || DeviceLongitude < -180.0) return false;            
-            return true;
-        }
-    }
 
     internal class OutputChannelBehaviorConfiguration
     {
-        public bool AllowLocationChanges { get; set; } = false;
+        public bool AllowLocationChange { get; set; } = false;
         public bool AllowStationTypeChange { get; set; } = false;
     }
 
@@ -55,12 +28,9 @@ namespace Ecowitt
     {
         const string METADATAFILESUFFIX = "metadata";
         
-        private Dictionary<string, string[]>? dataColumns = null;
-        private string[]? timeRows = null;        
         private string metaDataFileName;
         private string filePath;
-        private uint OriginalLastTimeStamp = 0;
-        private OutputChannelMetadata metaData;
+        private uint OriginalLastTimeStamp = 0;        
 
         public new ChannelTypes ChannelType = ChannelTypes.File;
 
@@ -72,7 +42,7 @@ namespace Ecowitt
                 else filePath = folderPath;               
             metaDataFileName = string.Format("{0}_{1}", sourceMetadata.ChannelName, METADATAFILESUFFIX);
             if (filePath != "") metaDataFileName = filePath + "\\" + metaDataFileName;
-            metaData = sourceMetadata;            
+                
         }
 
         public bool InitChannel(out string message)
@@ -80,6 +50,10 @@ namespace Ecowitt
             timeRows = null;
             dataColumns = null;            
             message = "";
+            JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions()
+            {
+                Converters = { new JsonStringEnumConverter() },
+            };
             try
             {
                 string? fileContent;
@@ -87,7 +61,7 @@ namespace Ecowitt
                 {
                     fileContent = sr.ReadToEnd();                    
                 }
-                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent);
+                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent, jsonSerializerOptions);
                 if (existingMetaData == null)
                 {
                     message = "Deserialization failed to produce non-null data";
@@ -118,7 +92,7 @@ namespace Ecowitt
                     message = "Solar irradiance units changed";
                     return false;
                 }
-                if (!configuration.AllowLocationChanges)
+                if (!configuration.AllowLocationChange)
                 {
                     if (existingMetaData.DeviceLatitude != metaData.DeviceLatitude || existingMetaData.DeviceLongitude != metaData.DeviceLongitude)
                     {
@@ -144,9 +118,8 @@ namespace Ecowitt
                 {                    
                     using (StreamWriter sw = new StreamWriter(metaDataFileName,
                         new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Create} ))
-                    {
-                        JsonSerializerOptions options = new JsonSerializerOptions() {  WriteIndented = true };
-                        var s = JsonSerializer.Serialize(metaData, options);
+                    {                     
+                        var s = JsonSerializer.Serialize(metaData, jsonSerializerOptions);
                         sw.WriteLine(s);    
                     }
                     return true;

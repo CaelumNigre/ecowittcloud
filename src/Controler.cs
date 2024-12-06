@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Azure.Identity;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -88,8 +89,7 @@ namespace Ecowitt
         public void RunProcessing(DataProcessingMode mode, bool initialRun = false)
         {
             if (!hasConfig) throw new InvalidOperationException("No configuration to start processing");
-
-            
+                        
             if (mode == DataProcessingMode.Offline) RunOfflineProcessing();
             if (mode == DataProcessingMode.Online) RunOnlineProcessing(initialRun);
         }
@@ -220,10 +220,15 @@ namespace Ecowitt
                         DeviceLongitude = deviceDetails.Longitude,
                         ChannelName = inputChannel
                     };
+                    OutputChannelConfiguration currentChannelConfigurationSettings =
+                        _configuration.ConfigurationSettings.Devices[verifiedDevice.Item2].OutputChannel;
+                    meta.TimestampFormat = currentChannelConfigurationSettings.TimeStampFormat;
                     OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                     {
+                        AllowLocationChange = currentChannelConfigurationSettings.LocationChangesAllowed,
+                        AllowStationTypeChange = currentChannelConfigurationSettings.StationTypeChangesAllowed
                     };
-                    var configuredOutputChannelID = _configuration.ConfigurationSettings.Devices[verifiedDevice.Item2].OutputChannel.ID;
+                    var configuredOutputChannelID = currentChannelConfigurationSettings.ID;
                     var configuredOutputChannel =
                         _configuration.ConfigurationSettings.OutputChannels.Where(x => x.ID == configuredOutputChannelID).FirstOrDefault();
                     if (configuredOutputChannel == null) throw new NullReferenceException("Fatal error can't find output channel configuration");
@@ -237,6 +242,21 @@ namespace Ecowitt
                                 {
                                     var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
                                         inputChannel, verifiedDevice.Item1.MAC, errorMessage);
+                                    Console.WriteLine(em);
+                                    outputChannel = null;
+                                }
+                                break;
+                            }
+                        case ChannelTypes.Blob:
+                            {
+                                outputChannel = new BlobOutputChannel(configuredOutputChannel.URL, 
+                                    new DefaultAzureCredential(_configuration.AzureCredential), 
+                                    meta, channelConfig);
+                                if (!outputChannel.InitChannel(out string errorMessage))
+                                {
+                                    var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
+                                        inputChannel, verifiedDevice.Item1.MAC, errorMessage);
+                                    outputChannel = null;
                                     Console.WriteLine(em);
                                 }
                                 break;
@@ -333,7 +353,14 @@ namespace Ecowitt
                     OutputChannelBehaviorConfiguration channelConfig = new OutputChannelBehaviorConfiguration()
                     {
                     };
-                    var outputChannel = new CSVFileOutputChannel(null,null,channelConfig);
+                    OutputChannelMetadata channelMetadata = new OutputChannelMetadata()
+                    {
+                        ChannelName = channel.ChannelName,
+                        DeviceName = "ecowitt_dummy",
+                        StationType = "dummy_station_type", 
+                        MAC = "00:00:00:00:00:00"
+                    };
+                    var outputChannel = new CSVFileOutputChannel(null,channelMetadata,channelConfig);
                     outputChannel.InitChannel(out string message);
                     var channelData = inputData.GetChannel(channel.ChannelName);
                     if (channelData == null) continue;

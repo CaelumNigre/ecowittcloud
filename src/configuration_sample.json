@@ -19,7 +19,9 @@
         "CustomChannelsNames": {
           "indoor": "Garage"
         },
-        "TimeStampFormat": "UTC"
+        "TimeStampFormat": "UTC",
+        "LocationChangesAllowed": false,
+        "StationTypeChangesAllowed": true
       }
     },
     {

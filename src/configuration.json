@@ -14,12 +14,14 @@
       "WindSpeedUnit": 6,
       "RainfallUnit": 12,
       "SolarIrradianceUnit": 16,
-      "OutputChannel": {        
+      "OutputChannel": {
         "ID": 1,
         "CustomChannelsNames": {
           "indoor": "Garage"
         },
-        "TimeStampFormat": "UTC"
+        "TimeStampFormat": "UTC",
+        "LocationChangesAllowed": false,
+        "StationTypeChangesAllowed": true
       }
     },
     {
@@ -41,9 +43,9 @@
       "URL": "data"
     },
     {
-      "Type": "Table",
+      "Type": "Blob",
       "ID": 2,
-      "URL": "."
+      "URL": "https://saecowittdatatesteuw01.blob.core.windows.net/data/"
     }
   ]
 }
