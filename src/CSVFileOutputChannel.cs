@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using static Ecowitt.EcowittDevice;
 
@@ -49,6 +50,10 @@ namespace Ecowitt
             timeRows = null;
             dataColumns = null;            
             message = "";
+            JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions()
+            {
+                Converters = { new JsonStringEnumConverter() },
+            };
             try
             {
                 string? fileContent;
@@ -56,7 +61,7 @@ namespace Ecowitt
                 {
                     fileContent = sr.ReadToEnd();                    
                 }
-                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent);
+                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent, jsonSerializerOptions);
                 if (existingMetaData == null)
                 {
                     message = "Deserialization failed to produce non-null data";
@@ -113,9 +118,8 @@ namespace Ecowitt
                 {                    
                     using (StreamWriter sw = new StreamWriter(metaDataFileName,
                         new FileStreamOptions() { Access = FileAccess.Write, Mode = FileMode.Create} ))
-                    {
-                        JsonSerializerOptions options = new JsonSerializerOptions() {  WriteIndented = true };
-                        var s = JsonSerializer.Serialize(metaData, options);
+                    {                     
+                        var s = JsonSerializer.Serialize(metaData, jsonSerializerOptions);
                         sw.WriteLine(s);    
                     }
                     return true;

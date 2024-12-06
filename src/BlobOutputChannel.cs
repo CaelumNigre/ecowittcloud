@@ -10,6 +10,7 @@ using Azure.Storage.Blobs.Models;
 using Azure;
 using Azure.Storage.Blobs.Specialized;
 using Azure.Identity;
+using System.Text.Json.Serialization;
 
 namespace Ecowitt
 {
@@ -44,6 +45,10 @@ namespace Ecowitt
             timeRows = null;
             dataColumns = null;            
             message = "";
+            JsonSerializerOptions options = new JsonSerializerOptions() {
+                Converters = { new JsonStringEnumConverter() },
+                WriteIndented = true
+            };
             BlobClient client = new BlobClient(new Uri(blobBase + ChannelName + "/" + METADATABLOBNAME),_credentials);
             try
             {
@@ -52,7 +57,7 @@ namespace Ecowitt
                 {
                     fileContent = sr.ReadToEnd();
                 }
-                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent);
+                var existingMetaData = JsonSerializer.Deserialize<OutputChannelMetadata>(fileContent, options);
                 if (existingMetaData == null)
                 {
                     message = "Deserialization failed to produce non-null data";
@@ -107,9 +112,8 @@ namespace Ecowitt
             {
                 if (ex is RequestFailedException)
                 {
-                    using (StreamWriter sw = new StreamWriter(client.OpenWrite(true)))
-                    {                        
-                        JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+                    using (StreamWriter sw = new StreamWriter(client.OpenWrite(true)))                    
+                    {                                               
                         var s = JsonSerializer.Serialize(metaData, options);
                         sw.WriteLine(s);                        
                     }
