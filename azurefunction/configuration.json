@@ -1,0 +1,37 @@
+{
+  "Devices": [
+    {
+      "MAC": "C8:C9:A3:1C:08:3A",
+      "PollRateMinutes": 60,
+      "ConfiguredChannels": [
+        "indoor",
+        "outdoor",
+        "rainfall",
+        "wind",
+        "pressure",
+        "soil_ch1"
+      ],
+      "TemperatureUnit": 1,
+      "PressureUnit": 3,
+      "WindSpeedUnit": 6,
+      "RainfallUnit": 12,
+      "SolarIrradianceUnit": 16,
+      "OutputChannel": {
+        "ID": 2,
+        "CustomChannelsNames": {
+          "indoor": "Garage"
+        },
+        "TimeStampFormat": "UTC",
+        "LocationChangesAllowed": false,
+        "StationTypeChangesAllowed": true
+      }
+    }    
+  ],
+  "OutputChannels": [    
+    {
+      "Type": "Blob",
+      "ID": 2,
+      "URL": "https://saecowittdatatesteuw01.blob.core.windows.net/data/"
+    }
+  ]
+}

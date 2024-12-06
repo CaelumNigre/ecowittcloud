@@ -19,7 +19,14 @@ namespace Ecowitt.AzureFunction
         public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
-            return new OkObjectResult("Welcome to Azure Functions!");
+
+            bool initialRun = false;
+            if (bool.TryParse(req.Query["initialRun"], out bool parsedValue))
+            {
+                initialRun = parsedValue;
+            }
+            var ctrl = new Controler(ConfigurationContext.AzureFunction, true);
+            return new OkObjectResult($"Welcome to Azure Functions! Initial Run: {initialRun}");
         }
     }
 }

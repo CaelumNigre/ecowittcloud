@@ -116,24 +116,27 @@ namespace Ecowitt
                 var kv = _environmentConfig["KV_NAME"];
                 if (string.IsNullOrEmpty(kv)) throw new InvalidOperationException("No Key Vault configured");
                 var tid = _environmentConfig["TENANT_ID"];
-                
-                if (tid != null)
-                    AzureCredential = new DefaultAzureCredentialOptions()
-                    {
-                        ExcludeAzureCliCredential = true,
-                        ExcludeAzurePowerShellCredential = true,
-                        ExcludeManagedIdentityCredential = true,
-                        TenantId = tid
-                    };
-                else
+                if (context == ConfigurationContext.Cmdline)
                 {
                     AzureCredential = new DefaultAzureCredentialOptions()
                     {
                         ExcludeAzureCliCredential = true,
                         ExcludeAzurePowerShellCredential = true,
-                        ExcludeManagedIdentityCredential = true
+                        ExcludeManagedIdentityCredential = true,                        
                     };
                 }
+                else
+                {
+                    AzureCredential = new DefaultAzureCredentialOptions()
+                    {
+                        ExcludeAzureCliCredential = true,
+                        ExcludeAzurePowerShellCredential = true
+                    };
+                }
+                if (tid != null)
+                {
+                    AzureCredential.TenantId = tid;                                       
+                }                
                 var _keyVaultUri = new Uri("https://" + kv + ".vault.azure.net");
                 _secretsConfig = new ConfigurationBuilder()
                     .AddAzureKeyVault(_keyVaultUri, new DefaultAzureCredential(AzureCredential))
