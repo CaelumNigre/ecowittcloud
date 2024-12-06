@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>53225239-5107-49dd-830d-040f0e42cbf8</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>common_code</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)BlobOutputChannel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Configuration.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Controler.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CSVFileOutputChannel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DataChannels.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EcowittDevice.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EcowittInputData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)OutputChannel.cs" />
+  </ItemGroup>
+</Project>
