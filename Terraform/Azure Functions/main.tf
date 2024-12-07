@@ -83,7 +83,7 @@ resource "azurerm_windows_function_app" "fapp" {
     use_32_bit_worker        = false
   }
   app_settings = {
-    FUNCTIONS_WORKER_RUNTIME                 = "dotnet"
+    FUNCTIONS_WORKER_RUNTIME                 = "dotnet-isolated"
     WEBSITE_CONTENTAZUREFILECONNECTIONSTRING = azurerm_storage_account.fapp-operational.primary_connection_string
     WEBSITE_CONTENTSHARE                     = "${var.fapp_name}-${random_string.sharesuffix.result}"
     KV_NAME                                  = "${var.kv_name}"
