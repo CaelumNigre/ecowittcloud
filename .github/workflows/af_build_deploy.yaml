@@ -41,13 +41,13 @@ jobs:
           dotnet-version: '8.0.x' 
 
       - name: 'Restore dependencies'
-        run: dotnet restore azurefunction/azurefunction.csproj
+        run: dotnet restore src/azurefunction/azurefunction.csproj
 
       - name: 'Build project'
-        run: dotnet build --configuration Release azurefunction/azurefunction.csproj
+        run: dotnet build --configuration Release src/azurefunction/azurefunction.csproj
 
       - name: 'Publish project'
-        run: dotnet publish --configuration Release --output ./publish azurefunction/azurefunction.csproj
+        run: dotnet publish --configuration Release --output ./publish src/azurefunction/azurefunction.csproj
 
       - name: 'Upload artifact'
         uses: actions/upload-artifact@v4
