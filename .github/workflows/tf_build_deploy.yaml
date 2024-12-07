@@ -136,12 +136,16 @@ jobs:
     needs: [terraform-plan]
     
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
     - name: Extract scalar variables from JSON variable
       run: echo "$TF_BACKEND" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
+    
     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
-
+    
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Terraform Init
       run: terraform init -backend-config="resource_group_name=${TF_RG_NAME}" -backend-config="storage_account_name=${TF_SA_NAME}"
