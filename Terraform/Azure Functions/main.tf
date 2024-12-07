@@ -103,11 +103,11 @@ resource "azurerm_role_assignment" "func_access_to_sa_table" {
 }
 
 data "azurerm_key_vault" "secrets_kv" {
-  name                 = "${var.kv_name}"
-  resource_group_name  = "${var.kv_rg}"
+  name                = var.kv_name
+  resource_group_name = var.kv_rg
 }
 resource "azurerm_role_assignment" "func_access_to_kv" {
-  scope                = data.azurerm_key_vault.secrets_kv.id  
+  scope                = data.azurerm_key_vault.secrets_kv.id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }

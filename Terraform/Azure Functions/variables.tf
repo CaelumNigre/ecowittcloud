@@ -8,7 +8,7 @@ variable "af_location" {
 
 variable "fapp_name" {
   description = "Function App base resource name"
-  default = "ecowitt"
+  default     = "ecowitt"
 }
 
 variable "env_suffix" {
