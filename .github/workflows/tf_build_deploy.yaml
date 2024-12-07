@@ -35,8 +35,8 @@ jobs:
     name: 'Terraform Plan'
     runs-on: ubuntu-latest
     env:
-      #this is needed since we are running terraform with read-only permissions
-      ARM_SKIP_PROVIDER_REGISTRATION: true
+      #this is needed since we are running terraform with read-only permissions      
+      ARM_RESOURCE_PROVIDER_REGISTRATIONS: "none"
     outputs:
       tfplanExitCode: ${{ steps.tf-plan.outputs.exitcode }}
 
