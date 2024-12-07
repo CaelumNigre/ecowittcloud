@@ -77,16 +77,13 @@ jobs:
           exit 0
         fi
 
-    - name: Debug step
-      run: |
-        ls -laR
-
     # Save plan to artifacts  
     - name: Publish Terraform Plan
       uses: actions/upload-artifact@v4
       with:
         name: tfplan
         path: Terraform
+        include-hidden-files: true
         
     # Create string output of Terraform Plan
     - name: Create String Output
@@ -153,9 +150,9 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: tfplan
-    #- name: Reinstate executables permissions
-    #  run: |        
-    #    chmod u+x -R .terraform
+    - name: Reinstate executables permissions
+      run: |        
+        chmod u+x -R .terraform
     # Terraform Apply
     - name: Terraform Apply
       run: |                
