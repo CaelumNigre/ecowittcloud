@@ -60,6 +60,8 @@ resource "random_string" "sharesuffix" {
   upper   = false
 }
 
+data "azurerm_client_config" "current" {}
+
 resource "azurerm_windows_function_app" "fapp" {
   # checkov:skip=CKV_AZURE_221:This function needs to be available from Internet for testing purposes
   # checkov:skip=CKV_AZURE_72:FIXME Remote debugging enabled
@@ -85,6 +87,7 @@ resource "azurerm_windows_function_app" "fapp" {
     WEBSITE_CONTENTAZUREFILECONNECTIONSTRING = azurerm_storage_account.fapp-operational.primary_connection_string
     WEBSITE_CONTENTSHARE                     = "${var.fapp_name}-${random_string.sharesuffix.result}"
     KV_NAME                                  = "${var.kv_name}"
+    TENANT_ID                                = data.azurerm_client_config.current.tenant_id
   }
   storage_account_name          = azurerm_storage_account.fapp-operational.name
   storage_uses_managed_identity = true

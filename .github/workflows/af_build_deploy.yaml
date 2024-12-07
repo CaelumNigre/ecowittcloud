@@ -1,0 +1,79 @@
+name: 'Azure Functions Build and Deploy'
+# workflow based on reference implementation from: https://github.com/Azure-Samples/terraform-github-actions 
+
+on:
+  push:
+    branches:
+    - main
+    paths:
+    - src/**
+    - .github/**
+  pull_request:
+    branches:
+    - main
+    paths:
+    - src/**
+    - .github/**
+  workflow_run:
+    workflows: ["Terraform Build and Deploy"]
+    types:
+      - completed
+  workflow_dispatch:  
+
+#Special permissions required for OIDC authentication
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-app:
+    name: 'Build C# app package for Azure Functions'
+    runs-on: windows-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 'Checkout code'
+        uses: actions/checkout@v2
+
+      - name: 'Setup .NET'
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '8.0.x' 
+
+      - name: 'Restore dependencies'
+        run: dotnet restore src/azurefunction/azurefunction.csproj
+
+      - name: 'Build project'
+        run: dotnet build --configuration Release src/azurefunction/azurefunction.csproj
+
+      - name: 'Publish project'
+        run: dotnet publish --configuration Release --output ./publish src/azurefunction/azurefunction.csproj
+
+      - name: 'Upload artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-function-package
+          path: ./publish
+
+  deploy-app:
+    name: 'Deploy Azure Functions to Function App'
+    runs-on: windows-latest
+    environment: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-app]
+    steps:
+      - name: 'Download artifact'
+        uses: actions/download-artifact@v4
+        with:
+          name: azure-function-package
+      - name: 'Azure Login'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: 'Deploy to Azure Function App'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ vars.FUNCTION_APP_NAME }}
+          package: azure-function-package
