@@ -14,6 +14,10 @@ on:
     paths:
     - src/**
     - .github/**
+  workflow_run:
+    workflows: ["Terraform Build and Deploy"]
+    types:
+      - completed
   workflow_dispatch:  
 
 #Special permissions required for OIDC authentication
@@ -26,6 +30,7 @@ jobs:
   build-app:
     name: 'Build C# app package for Azure Functions'
     runs-on: windows-latest
+    if: github.event_name == 'pull_request'
     steps:
       - name: 'Checkout code'
         uses: actions/checkout@v2
@@ -53,6 +58,8 @@ jobs:
   deploy-app:
     name: 'Deploy Azure Functions to Function App'
     runs-on: windows-latest
+    environment: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [build-app]
     steps:
       - name: 'Download artifact'
@@ -60,6 +67,13 @@ jobs:
         with:
           name: azure-function-package
       - name: 'Azure Login'
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: 'Deploy to Azure Function App'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ vars.FUNCTION_APP_NAME }}
+          package: azure-function-package
