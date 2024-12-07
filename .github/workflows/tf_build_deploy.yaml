@@ -7,6 +7,7 @@ on:
     - main
     paths:
     - Terraform/**
+    - .github/**
   pull_request:
     branches:
     - main
