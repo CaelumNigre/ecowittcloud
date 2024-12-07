@@ -21,15 +21,35 @@ jobs:
     name: 'Build C# app package for Azure Functions'
     runs-on: windows-latest
     steps:
-      - name: 'Step1'
-        run: |
-          echo 'Test'
+      - name: 'Checkout code'
+        uses: actions/checkout@v2
+
+      - name: 'Setup .NET'
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '8.0.0' # Adjust the version as needed
+
+      - name: 'Restore dependencies'
+        run: dotnet restore azurefunction/azurefunction.csproj
+
+      - name: 'Build project'
+        run: dotnet build --configuration Release azurefunction/azurefunction.csproj
+
+      - name: 'Publish project'
+        run: dotnet publish --configuration Release --output ./publish azurefunction/azurefunction.csproj
+
+      - name: 'Upload artifact'
+        uses: actions/upload-artifact@v2
+        with:
+          name: azure-function-package
+          path: ./publish
 
   deploy-app:
     name: 'Deploy Azure Functions to Function App'
     runs-on: windows-latest
     needs: [build-app]
     steps:
-      - name: 'Step1'
-        run: |
-          echo 'Test'
+      - name: 'Download artifact'
+        uses: actions/download-artifact@v2
+        with:
+          name: azure-function-package
