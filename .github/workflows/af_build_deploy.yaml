@@ -1,0 +1,35 @@
+name: 'Azure Functions Build and Deploy'
+# workflow based on reference implementation from: https://github.com/Azure-Samples/terraform-github-actions 
+
+on:
+  push:
+    branches:
+    - main
+    paths:
+    - src/**
+    - .github/**
+  pull_request:
+    branches:
+    - main
+    paths:
+    - src/**
+    - .github/**
+  workflow_dispatch:  
+
+  jobs:
+    build-app:
+      name: 'Build C# app package for Azure Functions'
+      runs-on: windows-latest
+      steps:
+        - name: 'Step1'
+          run: |
+            echo 'Test'
+
+    deploy-app:
+      name: 'Deploy Azure Functions to Function App'
+      runs-on: windows-latest
+      needs: [build-app]
+      steps:
+        - name: 'Step1'
+          run: |
+            echo 'Test'
