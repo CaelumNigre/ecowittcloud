@@ -165,7 +165,7 @@ jobs:
         # Sets the name of the function app in Github environment variables so it can be reused in the app deployment step          
     - name: Update function app name variable
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.PAT_TOKEN_FOR_VARIABLES }}
       run: |
         FUNCTION_APP_NAME=$(terraform output -json | jq -r '.function_app_name.value')
         gh variable set FUNCTION_APP_NAME -b $FUNCTION_APP_NAME --env test        
