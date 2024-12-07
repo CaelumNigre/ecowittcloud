@@ -71,6 +71,8 @@ module "AzureFunction" {
   # FIXME: will fail if optional resources are not enabled
   appi_key         = module.AppInsights[0].app_insights_key
   appi_conn_string = module.AppInsights[0].app_insights_connection_string
+  kv_name     = module.KV.kv_name
+  kv_rg       = var.rg_location
 }
 
 

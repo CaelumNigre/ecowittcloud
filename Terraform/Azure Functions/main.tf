@@ -81,6 +81,7 @@ resource "azurerm_windows_function_app" "fapp" {
     FUNCTIONS_WORKER_RUNTIME                 = "dotnet"
     WEBSITE_CONTENTAZUREFILECONNECTIONSTRING = azurerm_storage_account.fapp-operational.primary_connection_string
     WEBSITE_CONTENTSHARE                     = "${var.fapp_name}-${random_string.sharesuffix.result}"
+    KV_NAME                                  = "${var.kv_name}"
   }
   storage_account_name          = azurerm_storage_account.fapp-operational.name
   storage_uses_managed_identity = true
@@ -98,5 +99,15 @@ resource "azurerm_role_assignment" "func_access_to_sa_blobs" {
 resource "azurerm_role_assignment" "func_access_to_sa_table" {
   scope                = azurerm_storage_account.fapp-data.id
   role_definition_name = "Storage Table Data Contributor"
+  principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
+}
+
+data "azurerm_key_vault" "secrets_kv" {
+  name                 = "${var.kv_name}"
+  resource_group_name  = "${var.kv_rg}"
+}
+resource "azurerm_role_assignment" "func_access_to_kv" {
+  scope                = data.azurerm_key_vault.secrets_kv.id  
+  role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }
