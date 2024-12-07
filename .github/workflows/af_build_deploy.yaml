@@ -18,6 +18,8 @@ on:
     workflows: ["Terraform Build and Deploy"]
     types:
       - completed
+    branches:
+      - 'main'
   workflow_dispatch:  
 
 #Special permissions required for OIDC authentication
@@ -30,7 +32,7 @@ jobs:
   build-app:
     name: 'Build C# app package for Azure Functions'
     runs-on: windows-latest
-    if: github.event_name == 'pull_request'  || (github.event_name == 'workflow_run' && github.head_ref == 'main') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request'  || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     steps:
       - name: 'Checkout code'
         uses: actions/checkout@v2
