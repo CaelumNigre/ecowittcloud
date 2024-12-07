@@ -39,7 +39,7 @@ jobs:
         run: dotnet publish --configuration Release --output ./publish azurefunction/azurefunction.csproj
 
       - name: 'Upload artifact'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: azure-function-package
           path: ./publish
