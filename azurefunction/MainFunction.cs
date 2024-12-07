@@ -26,6 +26,7 @@ namespace Ecowitt.AzureFunction
                 initialRun = parsedValue;
             }
             var ctrl = new Controler(ConfigurationContext.AzureFunction, true);
+            ctrl.RunProcessing(DataProcessingMode.Online, initialRun);
             return new OkObjectResult($"Welcome to Azure Functions! Initial Run: {initialRun}");
         }
     }
