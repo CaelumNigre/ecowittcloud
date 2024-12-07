@@ -68,6 +68,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: azure-function-package
+          path: ./af_package
       - name: 'Azure Login'
         uses: azure/login@v2
         with:
@@ -78,4 +79,4 @@ jobs:
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ vars.FUNCTION_APP_NAME }}
-          package: azure-function-package
+          package: ./af_package
