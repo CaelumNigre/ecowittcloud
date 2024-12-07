@@ -76,7 +76,11 @@ jobs:
         else 
           exit 0
         fi
-        
+
+    - name: Debug step
+      run: |
+        ls -lR
+                
     # Save plan to artifacts  
     - name: Publish Terraform Plan
       uses: actions/upload-artifact@v4
