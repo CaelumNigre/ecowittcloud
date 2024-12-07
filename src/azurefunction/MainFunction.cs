@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Ecowitt;
+using System.Net;
 
 namespace Ecowitt.AzureFunction
 {
@@ -16,7 +16,7 @@ namespace Ecowitt.AzureFunction
         }
 
         [Function("OnDemandPoll")]
-        public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
+        public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
 
@@ -27,7 +27,9 @@ namespace Ecowitt.AzureFunction
             }
             var ctrl = new Controler(ConfigurationContext.AzureFunction, true);
             ctrl.RunProcessing(DataProcessingMode.Online, initialRun);
-            return new OkObjectResult($"Welcome to Azure Functions! Initial Run: {initialRun}");
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.WriteString($"Welcome to Azure Functions! Initial Run: {initialRun}");
+            return response;            
         }
     }
 }
