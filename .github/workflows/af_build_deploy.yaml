@@ -16,6 +16,12 @@ on:
     - .github/**
   workflow_dispatch:  
 
+#Special permissions required for OIDC authentication
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
 jobs:
   build-app:
     name: 'Build C# app package for Azure Functions'
@@ -53,3 +59,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: azure-function-package
+      - name: 'Azure Login'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
