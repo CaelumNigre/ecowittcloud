@@ -159,9 +159,10 @@ jobs:
         terraform apply tfplan
         # Sets the name of the function app in Github environment variables so it can be reused in the app deployment step          
     - name: Update function app name variable
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         FUNCTION_APP_NAME=$(terraform output -json | jq -r '.function_app_name.value')
         gh api -X PUT /repos/${{ github.repository }}/environments/test/variables/FUNCTION_APP_NAME \
           -f name=FUNCTION_APP_NAME \
-          -f value=$FUNCTION_APP_NAME \
-          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"
+          -f value=$FUNCTION_APP_NAME   
