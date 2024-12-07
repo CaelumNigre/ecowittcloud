@@ -30,7 +30,7 @@ jobs:
   build-app:
     name: 'Build C# app package for Azure Functions'
     runs-on: windows-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request'  || (github.event_name == 'workflow_run' && github.head_ref == 'main') || github.event_name == 'workflow_dispatch'
     steps:
       - name: 'Checkout code'
         uses: actions/checkout@v2
