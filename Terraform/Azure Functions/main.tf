@@ -62,7 +62,7 @@ resource "random_string" "sharesuffix" {
 
 resource "azurerm_windows_function_app" "fapp" {
   # checkov:skip=CKV_AZURE_221:This function needs to be available from Internet for testing purposes
-  # checkov:skip_CKV_AZURE_72:FIXME Remote debugging enabled
+  # checkov:skip=CKV_AZURE_72:FIXME Remote debugging enabled
   name                        = "fa-${var.fapp_name}-${var.env_suffix}-${local.location_suffix}"
   location                    = var.af_location
   resource_group_name         = var.af_rg_name
