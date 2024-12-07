@@ -83,7 +83,7 @@ resource "azurerm_windows_function_app" "fapp" {
     use_32_bit_worker        = false
   }
   app_settings = {
-    FUNCTIONS_WORKER_RUNTIME                 = "dotnet"
+    FUNCTIONS_WORKER_RUNTIME                 = "dotnet-isolated"
     WEBSITE_CONTENTAZUREFILECONNECTIONSTRING = azurerm_storage_account.fapp-operational.primary_connection_string
     WEBSITE_CONTENTSHARE                     = "${var.fapp_name}-${random_string.sharesuffix.result}"
     KV_NAME                                  = "${var.kv_name}"
@@ -97,13 +97,13 @@ resource "azurerm_windows_function_app" "fapp" {
 }
 
 resource "azurerm_role_assignment" "func_access_to_sa_blobs" {
-  scope                = azurerm_storage_account.fapp-data.id
+  scope                = azurerm_storage_account.fapp-operational.id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }
 
 resource "azurerm_role_assignment" "func_access_to_sa_table" {
-  scope                = azurerm_storage_account.fapp-data.id
+  scope                = azurerm_storage_account.fapp-operational.id
   role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }
