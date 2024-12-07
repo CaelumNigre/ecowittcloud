@@ -17,7 +17,7 @@
     },
     "cmdline online": {
       "commandName": "Project",
-      "commandLineArgs": "--mode online --initial",
+      "commandLineArgs": "--mode online ",
       "environmentVariables": {
         "KV_NAME": "kv-ecowitt-test-euw-01",
         "TENANT_ID": "938414a4-7ba8-49b9-83a2-097809156c5a"

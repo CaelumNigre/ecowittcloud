@@ -54,6 +54,9 @@ namespace Ecowitt
             {
                 Converters = { new JsonStringEnumConverter() },
             };
+            var folder = Path.GetDirectoryName(metaDataFileName);
+            if (!string.IsNullOrEmpty(folder))
+                if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
             try
             {
                 string? fileContent;
@@ -113,7 +116,7 @@ namespace Ecowitt
                 return true;
             }
             catch (Exception ex)
-            {
+            {                
                 if (ex is FileNotFoundException || ex is InvalidDataException)
                 {                    
                     using (StreamWriter sw = new StreamWriter(metaDataFileName,
