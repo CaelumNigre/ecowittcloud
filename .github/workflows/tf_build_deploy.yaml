@@ -7,11 +7,13 @@ on:
     - main
     paths:
     - Terraform/**
+    - .github/**
   pull_request:
     branches:
     - main
     paths:
     - Terraform/**
+    - .github/**
   workflow_dispatch:  
 
 #Special permissions required for OIDC authentication
@@ -35,8 +37,8 @@ jobs:
     name: 'Terraform Plan'
     runs-on: ubuntu-latest
     env:
-      #this is needed since we are running terraform with read-only permissions
-      ARM_SKIP_PROVIDER_REGISTRATION: true
+      #this is needed since we are running terraform with read-only permissions      
+      ARM_RESOURCE_PROVIDER_REGISTRATIONS: "none"
     outputs:
       tfplanExitCode: ${{ steps.tf-plan.outputs.exitcode }}
 
@@ -74,13 +76,14 @@ jobs:
         else 
           exit 0
         fi
-        
+
     # Save plan to artifacts  
     - name: Publish Terraform Plan
       uses: actions/upload-artifact@v4
       with:
         name: tfplan
         path: Terraform
+        include-hidden-files: true
         
     # Create string output of Terraform Plan
     - name: Create String Output

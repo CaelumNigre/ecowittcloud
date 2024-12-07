@@ -20,6 +20,7 @@ resource "azurerm_storage_account" "fapp-operational" {
   account_tier                    = "Standard"
   min_tls_version                 = "TLS1_2"
   allow_nested_items_to_be_public = false
+  local_user_enabled              = false
 }
 
 resource "azurerm_storage_account" "fapp-data" {
@@ -40,6 +41,7 @@ resource "azurerm_storage_account" "fapp-data" {
   min_tls_version                 = "TLS1_2"
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = false
+  local_user_enabled              = false
 }
 
 resource "azurerm_service_plan" "appplan" {
@@ -62,6 +64,7 @@ data "azurerm_client_config" "current" {}
 
 resource "azurerm_windows_function_app" "fapp" {
   # checkov:skip=CKV_AZURE_221:This function needs to be available from Internet for testing purposes
+  # checkov:skip=CKV_AZURE_72:FIXME Remote debugging enabled
   name                        = "fa-${var.fapp_name}-${var.env_suffix}-${local.location_suffix}"
   location                    = var.af_location
   resource_group_name         = var.af_rg_name
@@ -83,6 +86,7 @@ resource "azurerm_windows_function_app" "fapp" {
     FUNCTIONS_WORKER_RUNTIME                 = "dotnet"
     WEBSITE_CONTENTAZUREFILECONNECTIONSTRING = azurerm_storage_account.fapp-operational.primary_connection_string
     WEBSITE_CONTENTSHARE                     = "${var.fapp_name}-${random_string.sharesuffix.result}"
+    KV_NAME                                  = "${var.kv_name}"
     TENANT_ID                                = data.azurerm_client_config.current.tenant_id
   }
   storage_account_name          = azurerm_storage_account.fapp-operational.name
@@ -101,5 +105,15 @@ resource "azurerm_role_assignment" "func_access_to_sa_blobs" {
 resource "azurerm_role_assignment" "func_access_to_sa_table" {
   scope                = azurerm_storage_account.fapp-data.id
   role_definition_name = "Storage Table Data Contributor"
+  principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
+}
+
+data "azurerm_key_vault" "secrets_kv" {
+  name                = var.kv_name
+  resource_group_name = var.kv_rg
+}
+resource "azurerm_role_assignment" "func_access_to_kv" {
+  scope                = data.azurerm_key_vault.secrets_kv.id
+  role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }
