@@ -163,6 +163,4 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         FUNCTION_APP_NAME=$(terraform output -json | jq -r '.function_app_name.value')
-        gh api -X PUT /repos/${{ github.repository }}/environments/test/variables/FUNCTION_APP_NAME \
-          -f name=FUNCTION_APP_NAME \
-          -f value=$FUNCTION_APP_NAME   
+        gh variable set FUNCTION_APP_NAME -b $FUNCTION_APP_NAME --env test        
