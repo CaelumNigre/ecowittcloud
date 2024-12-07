@@ -97,13 +97,13 @@ resource "azurerm_windows_function_app" "fapp" {
 }
 
 resource "azurerm_role_assignment" "func_access_to_sa_blobs" {
-  scope                = azurerm_storage_account.fapp-data.id
+  scope                = azurerm_storage_account.fapp-operational.id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }
 
 resource "azurerm_role_assignment" "func_access_to_sa_table" {
-  scope                = azurerm_storage_account.fapp-data.id
+  scope                = azurerm_storage_account.fapp-operational.id
   role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }
