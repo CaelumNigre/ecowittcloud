@@ -54,8 +54,9 @@ jobs:
       - name: 'Upload artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: azure-function-package
+          name: azure-function-package          
           path: ./publish
+          include-hidden-files: true
 
   deploy-app:
     name: 'Deploy Azure Functions to Function App'
