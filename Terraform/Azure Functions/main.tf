@@ -88,6 +88,7 @@ resource "azurerm_windows_function_app" "fapp" {
     WEBSITE_CONTENTSHARE                     = "${var.fapp_name}-${random_string.sharesuffix.result}"
     KV_NAME                                  = "${var.kv_name}"
     TENANT_ID                                = data.azurerm_client_config.current.tenant_id
+    CONFIG_STORAGE                           = azurerm_storage_account.fapp-data.name
     netFrameworkVersion                      = "v6.0"
   }
 
@@ -117,5 +118,11 @@ data "azurerm_key_vault" "secrets_kv" {
 resource "azurerm_role_assignment" "func_access_to_kv" {
   scope                = data.azurerm_key_vault.secrets_kv.id
   role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "func_access_to_sa_data_blobs" {
+  scope                = azurerm_storage_account.fapp-data.id
+  role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }
