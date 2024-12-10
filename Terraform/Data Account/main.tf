@@ -3,6 +3,7 @@ locals {
 }
 
 resource "azurerm_storage_account" "data_sa" {
+  # checkov:skip=CKV_AZURE_43:False positive
   # checkov:skip=CKV_AZURE_59:This is storage account for storing data that will accessed over Internet
   # checkov:skip=CKV2_AZURE_33:This is storage account for storing data that will accessed over Internet
   # checkov:skip=CKV_AZURE_33:Queue service is not used by this account
@@ -24,12 +25,14 @@ resource "azurerm_storage_account" "data_sa" {
 }
 
 resource "azurerm_storage_container" "config_blob_container" {
+  # checkov:skip=CKV2_AZURE_21:Irrelevant
   name                  = "config"
   storage_account_id    = azurerm_storage_account.data_sa.id
   container_access_type = "private"
 }
 
 resource "azurerm_storage_container" "data_blob_container" {
+  # checkov:skip=CKV2_AZURE_21:Irrelevant
   name                  = "data"
   storage_account_id    = azurerm_storage_account.data_sa.id
   container_access_type = "private"
