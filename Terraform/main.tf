@@ -80,7 +80,7 @@ module "AzureFunction" {
   appi_conn_string = module.AppInsights[0].app_insights_connection_string
   kv_name          = module.KV.kv_name
   kv_rg            = azurerm_resource_group.rg.name
-  data_sa_name     = module.DataAccount.sa_name
+  data_sa_name     = module.DataAccount.data_sa_name
   data_sa_rg       = azurerm_resource_group.rg.name
 }
 

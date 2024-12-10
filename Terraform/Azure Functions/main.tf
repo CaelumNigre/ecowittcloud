@@ -67,7 +67,7 @@ resource "azurerm_windows_function_app" "fapp" {
     WEBSITE_CONTENTSHARE                     = "${var.fapp_name}-${random_string.sharesuffix.result}"
     KV_NAME                                  = "${var.kv_name}"
     TENANT_ID                                = data.azurerm_client_config.current.tenant_id
-    CONFIG_STORAGE                           = azurerm_storage_account.fapp-data.name
+    CONFIG_STORAGE                           = data.azurerm_storage_account.data_sa.name
     netFrameworkVersion                      = "v6.0"
   }
 
