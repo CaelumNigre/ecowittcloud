@@ -11,6 +11,7 @@ using System.Reflection;
 using Azure.Core.Diagnostics;
 using static Ecowitt.EcowittDevice;
 using System.Text.Json.Serialization;
+using Azure.Storage.Blobs;
 
 namespace Ecowitt
 {
@@ -94,7 +95,8 @@ namespace Ecowitt
         private ConfigurationContext _context;
         private IConfigurationRoot _environmentConfig;
         private IConfigurationRoot _secretsConfig;          
-        
+        private string? _configStorage;
+
         public ConfigurationData ConfigurationSettings { get; private set;}
         public DefaultAzureCredentialOptions AzureCredential { get; private set; }
         public string? APIKey { get; private set; }
@@ -111,6 +113,15 @@ namespace Ecowitt
                 .AddEnvironmentVariables()
                 .Build();
             UseKeyVaultForSecrets = useKV;
+            if (context == ConfigurationContext.AzureFunction)
+            {
+                _configStorage = _environmentConfig["CONFIG_STORAGE"];
+                if (!string.IsNullOrEmpty(_configStorage)) 
+                {
+                    ConfigFileName = "configuration.json";                    
+                }
+                else _configStorage = null;
+            }
             if (useKV)
             {
                 var kv = _environmentConfig["KV_NAME"];
@@ -157,6 +168,26 @@ namespace Ecowitt
         public bool ReadConfiguration(out string errorMessage)
         {
             errorMessage = "";
+            if (_context == ConfigurationContext.AzureFunction && _configStorage!=null)
+            {
+                try
+                {
+                    var blobServiceClient = new BlobServiceClient(new Uri("https://" + _configStorage + ".blob.core.windows.net"), new DefaultAzureCredential());
+                    var containerClient = blobServiceClient.GetBlobContainerClient("config");
+                    var blobClient = containerClient.GetBlobClient(ConfigFileName);
+                    var response = blobClient.Download();
+                    using (var sr = new StreamReader(response.Value.Content))
+                    {
+                        _rawConfig = sr.ReadToEnd();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = ex.Message;
+                    return false;
+                }
+                return true;
+            }
             try
             {
                 using (StreamReader sr = new StreamReader(ConfigFileName))
