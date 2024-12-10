@@ -40,20 +40,12 @@ resource "azurerm_resource_group" "rg" {
   location = var.rg_location
 }
 
-module "LAW" {
-  count        = var.deploy_optional_resources ? 1 : 0
-  source       = "./LAW"
-  law_location = var.rg_location
-  law_rg       = azurerm_resource_group.rg.name
-  env_suffix   = var.env_suffix
-}
-module "AppInsights" {
-  count          = var.deploy_optional_resources ? 1 : 0
-  source         = "./App Insights"
-  appi_rg        = azurerm_resource_group.rg.name
-  appi_location  = var.rg_location
-  appi_workspace = module.LAW[0].workspace_id
-  env_suffix     = var.env_suffix
+module "Logging" {
+  count         = var.deploy_optional_resources ? 1 : 0
+  source        = "./App Insights"
+  appi_rg       = azurerm_resource_group.rg.name
+  appi_location = var.rg_location
+  env_suffix    = var.env_suffix
 }
 
 module "KV" {
@@ -76,8 +68,8 @@ module "AzureFunction" {
   af_location = var.rg_location
   env_suffix  = var.env_suffix
   # FIXME: will fail if optional resources are not enabled
-  appi_key         = module.AppInsights[0].app_insights_key
-  appi_conn_string = module.AppInsights[0].app_insights_connection_string
+  appi_key         = module.Logging[0].app_insights_key
+  appi_conn_string = module.Logging[0].app_insights_connection_string
   kv_name          = module.KV.kv_name
   kv_rg            = azurerm_resource_group.rg.name
   data_sa_name     = module.DataAccount.data_sa_name
