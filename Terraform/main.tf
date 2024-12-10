@@ -42,7 +42,7 @@ resource "azurerm_resource_group" "rg" {
 
 module "Logging" {
   count         = var.deploy_optional_resources ? 1 : 0
-  source        = "./App Insights"
+  source        = "./Logging"
   appi_rg       = azurerm_resource_group.rg.name
   appi_location = var.rg_location
   env_suffix    = var.env_suffix
