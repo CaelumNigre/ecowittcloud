@@ -23,27 +23,6 @@ resource "azurerm_storage_account" "fapp-operational" {
   local_user_enabled              = false
 }
 
-resource "azurerm_storage_account" "fapp-data" {
-  # checkov:skip=CKV_AZURE_59:This is storage account for storing data that will accessed over Internet
-  # checkov:skip=CKV2_AZURE_33:This is storage account for storing data that will accessed over Internet
-  # checkov:skip=CKV_AZURE_33:Queue service is not used by this account
-  # checkov:skip=CKV_AZURE_206:ZRS is good enough for me
-  # checkov:skip=CKV2_AZURE_41:FIXME need to better understanding of the SAS expiration setting
-  # checkov:skip=CKV2_AZURE_38:Soft delete not required
-  # checkov:skip=CKV2_AZURE_1:Account does not contain sensitive data
-  name                            = "sa${var.fapp_name}data${var.env_suffix}${local.location_suffix}01"
-  resource_group_name             = var.af_rg_name
-  location                        = var.af_location
-  account_kind                    = "StorageV2"
-  access_tier                     = "Hot"
-  account_replication_type        = "ZRS"
-  account_tier                    = "Standard"
-  min_tls_version                 = "TLS1_2"
-  allow_nested_items_to_be_public = false
-  shared_access_key_enabled       = false
-  local_user_enabled              = false
-}
-
 resource "azurerm_service_plan" "appplan" {
   # checkov:skip=CKV_AZURE_212:Worker count is not applicable for Consumption plan
   # checkov:skip=CKV_AZURE_225:Zone availability requires Premium plans
@@ -121,8 +100,13 @@ resource "azurerm_role_assignment" "func_access_to_kv" {
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }
 
+data "azurerm_storage_account" "data_sa" {
+  name                = var.data_sa_name
+  resource_group_name = var.data_sa_rg
+}
+
 resource "azurerm_role_assignment" "func_access_to_sa_data_blobs" {
-  scope                = azurerm_storage_account.fapp-data.id
+  scope                = data.azurerm_storage_account.data_sa.id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_windows_function_app.fapp.identity[0].principal_id
 }

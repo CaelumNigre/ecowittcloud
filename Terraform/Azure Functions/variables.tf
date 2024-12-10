@@ -30,3 +30,11 @@ variable "kv_name" {
 variable "kv_rg" {
   description = "Resource group name where Key Vault with secrets is located"
 }
+
+variable "data_sa_name" {
+  description = "Data Storage Account name"
+}
+
+variable "data_sa_rg" {
+  description = "Data Storage Account resource group"
+}
