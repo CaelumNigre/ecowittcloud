@@ -29,7 +29,7 @@ resource "azurerm_storage_container" "config_blob_container" {
   container_access_type = "private"
 }
 
-resource "azurerm_storage_container" "config_blob_container" {
+resource "azurerm_storage_container" "data_blob_container" {
   name                  = "data"
   storage_account_id    = azurerm_storage_account.data_sa.id
   container_access_type = "private"
