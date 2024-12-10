@@ -11,7 +11,7 @@ resource "azurerm_storage_account" "data_sa" {
   # checkov:skip=CKV2_AZURE_41:FIXME need to better understanding of the SAS expiration setting
   # checkov:skip=CKV2_AZURE_38:Soft delete not required
   # checkov:skip=CKV2_AZURE_1:Account does not contain sensitive data
-  name                            = "sa${var.sa_name}data${var.env_suffix}${local.location_suffix}01"
+  name                            = "sa${var.sa_name}${var.env_suffix}${local.location_suffix}01"
   resource_group_name             = var.sa_rg_name
   location                        = var.sa_location
   account_kind                    = "StorageV2"
