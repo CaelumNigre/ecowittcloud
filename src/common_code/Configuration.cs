@@ -172,7 +172,8 @@ namespace Ecowitt
             {
                 try
                 {
-                    var blobServiceClient = new BlobServiceClient(new Uri("https://" + _configStorage + ".blob.core.windows.net"), new DefaultAzureCredential());
+                    var blobServiceClient = new BlobServiceClient(new Uri("https://" + _configStorage + ".blob.core.windows.net"), 
+                        new DefaultAzureCredential(AzureCredential));
                     var containerClient = blobServiceClient.GetBlobContainerClient("config");
                     var blobClient = containerClient.GetBlobClient(ConfigFileName);
                     var response = blobClient.Download();
