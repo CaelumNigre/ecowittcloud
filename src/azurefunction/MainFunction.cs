@@ -29,5 +29,14 @@ namespace Ecowitt.AzureFunction
             ctrl.RunProcessing(DataProcessingMode.Online, initialRun);
             return new OkObjectResult($"Welcome to Azure Functions! Initial Run: {initialRun}");
         }
+
+        [Function("ScheduledPoll")]
+        public void ScheduledRun([TimerTrigger("0 */60 * * * *")] TimerInfo timer)
+        {
+            _logger.LogInformation("C# Timer trigger function executed at: {time}", DateTime.Now);
+
+            var ctrl = new Controler(ConfigurationContext.AzureFunction, true);
+            ctrl.RunProcessing(DataProcessingMode.Online, false);
+        }
     }
 }
