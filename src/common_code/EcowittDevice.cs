@@ -1,6 +1,8 @@
 ﻿using Azure.Core;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http.Headers;
@@ -109,7 +111,7 @@ namespace Ecowitt
             _httpClient = new HttpClient();
         }
 
-        public async Task<string?> ReadHistoricalData(DateTime startTime, DateTime endTime, List<string>? customChannels = null)
+        public async Task<string?> ReadHistoricalData(ILogger logger, DateTime startTime, DateTime endTime, List<string>? customChannels = null)
         {
             if (startTime < DateTime.Now.AddDays(-90.0)) throw new ArgumentException("Start time too far in the past - maximum is 90 days");
             if (endTime > DateTime.Now.AddDays(1.0)) throw new ArgumentException("End time is too far in the future - maximum is 1 day");
@@ -135,10 +137,18 @@ namespace Ecowitt
             string queryString = "?" + BuildQueryString(queryArgs);
             string requestURL = API_BASE_URL + API_READ_HISTORICAL_DATA + queryString;
             string requestID = "( " + queryArgs["mac"] + " - " + queryArgs["call_back"] + " )";
-            return await APICall(requestURL, requestID);
+            Stopwatch stopwatch = new Stopwatch();
+            using (logger.BeginScope("[{requestID}]", requestID))
+            {
+                stopwatch.Start();
+                string? result = await APICall(logger,requestURL, requestID);
+                stopwatch.Stop();            
+                logger.LogInformation("API {URL} call time: {ElapsedMilliseconds} ms", API_READ_HISTORICAL_DATA, stopwatch.ElapsedMilliseconds);
+                return result;
+            }                        
         }
 
-        public async Task<string?> GetDeviceInfo()
+        public async Task<string?> GetDeviceInfo(ILogger logger)
         {
             Dictionary<string, string> queryArgs = new Dictionary<string, string>
             {
@@ -148,8 +158,16 @@ namespace Ecowitt
             };
             string queryString = "?" + BuildQueryString(queryArgs);
             string requestURL = API_BASE_URL + API_GET_DEVICE_INFO + queryString;
-            string requestID = "( " + queryArgs["mac"] + " )";
-            return await APICall(requestURL, requestID);
+            string requestID = "( " + queryArgs["mac"] + " )";            
+            Stopwatch stopwatch = new Stopwatch();            
+            using (logger.BeginScope("[{requestID}]", requestID))
+            {
+                stopwatch.Start();
+                string? result = await APICall(logger, requestURL, requestID);
+                stopwatch.Stop();
+                logger.LogInformation("API {URL} call time: {ElapsedMilliseconds} ms", API_READ_HISTORICAL_DATA, stopwatch.ElapsedMilliseconds);
+                return result;
+            }            
         }
 
         private string BuildQueryString(Dictionary<string, string> argsList)
@@ -170,7 +188,7 @@ namespace Ecowitt
             return s.ToString();
         }
 
-        private async Task<string?> APICall(string requestURL, string requestID)
+        private async Task<string?> APICall(ILogger logger, string requestURL, string requestID)
         {
             HttpRequestMessage request;
             var rnd = new Random();
@@ -179,8 +197,7 @@ namespace Ecowitt
             do
             {
                 using (request = new HttpRequestMessage(new HttpMethod("GET"), requestURL))
-                {
-                    DateTime startTime = DateTime.Now;
+                {                    
                     using (HttpResponseMessage res = await _httpClient.SendAsync(request))
                     {
                         using (HttpContent content = res.Content)
@@ -190,9 +207,7 @@ namespace Ecowitt
                                 if (res.StatusCode == System.Net.HttpStatusCode.Forbidden) throw new UnauthorizedAccessException();
                                 if (res.StatusCode == System.Net.HttpStatusCode.NotFound) throw new ArgumentException("Result not found");
                                 throw new HttpRequestException("HTTP code: " + res.StatusCode + " Message: " + res.ReasonPhrase);
-                            }
-                            TimeSpan duration = DateTime.Now - startTime;
-                            Console.WriteLine("Response time (ms): " + duration.TotalMilliseconds.ToString());
+                            }                            
                             string data = await content.ReadAsStringAsync();
                             if (!string.IsNullOrWhiteSpace(data))
                             {
@@ -213,29 +228,29 @@ namespace Ecowitt
                                             {
                                                 var em = string.Format("API error. {0} Message not success: {1}",
                                                     requestID, result.Message);
-                                                Console.WriteLine(em);
+                                                logger.LogWarning(em);
                                             }
                                         }
                                         else
                                         {
                                             var em = string.Format("API error. {0} Non-zero code: {1} Message: {2}",
                                                 requestID, result.Code, result.Message);
-                                            Console.WriteLine(em);
+                                            logger.LogWarning(em);
                                         }
                                     }
                                     else
                                     {
-                                        Console.WriteLine("API returned empty JSON");
+                                        logger.LogWarning("API returned empty JSON");
                                     }
                                 }
                                 catch (JsonException ex)
                                 {
-                                    Console.WriteLine("Exception deserializing API result." + ex.Message);
+                                    logger.LogWarning("Exception deserializing API result. {exceptionMessage}", ex.Message);
                                 }
                             }
                             else
                             {
-                                Console.WriteLine("API returned empty result");
+                                logger.LogWarning("API returned empty result");
                             }
 
                             var currentRandomDelay = rnd.Next(2000, 4000);
@@ -246,7 +261,7 @@ namespace Ecowitt
                 }
                 retryCounter--;
             } while (retryCounter > 0);
-            Console.WriteLine("Max retries exceeded - giving up on API");
+            logger.LogError("Max retries exceeded - giving up on API");
             return null;
         }
 
