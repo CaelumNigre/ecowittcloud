@@ -1,14 +1,16 @@
 ﻿using Azure.Identity;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using static Ecowitt.EcowittDevice;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+
 
 namespace Ecowitt
 {
@@ -30,24 +32,39 @@ namespace Ecowitt
         static readonly string[] data_samples = ["historical_data_3.json", "historical_data_2.json"];
         //static readonly string[] data_samples = ["historical_data_3.json"];
         private bool hasConfig = false;
+        private string runId = Guid.NewGuid().ToString();
+        private ILogger _logger = null;
 
-        public Controler(ConfigurationContext context, bool useKV) {
-            Console.WriteLine("Initializing configuration settings");
-            _configuration = new Configuration("configuration.json", context, useKV);
-            if (_configuration == null) throw new NullReferenceException("Failed to initialize configuration");
-            Console.WriteLine("Reading configuration file");
-            if (!_configuration.ReadConfiguration(out string configErrorMessage))
+        public Controler(ConfigurationContext context, ILogger logger, bool useKV) {
+            _logger = logger;
+            using (_logger.BeginScope("{runid}", runId))
             {
-                Console.WriteLine("Error loading configuration: " + configErrorMessage);
-            }
-            else
-            {
-                Console.WriteLine("Validating configuration settings");
-                if (!_configuration.ValidateConfiguration(out configErrorMessage))
+                _logger.LogInformation("Initializing configuration settings");
+                _configuration = new Configuration("configuration.json", context, useKV);
+                if (_configuration == null)
                 {
-                    throw new InvalidDataException("Error loading configuration: " + configErrorMessage);
+                    string message = "Failed to initialize configuration";
+                    _logger.LogError(message);
+                    throw new InvalidOperationException(message);
                 }
-                else hasConfig = true;
+                _logger.LogInformation("Reading configuration file");
+                if (!_configuration.ReadConfiguration(out string configErrorMessage))
+                {
+                    string message = "Error loading configuration: " + configErrorMessage;
+                    _logger.LogError(message);
+                    throw new InvalidDataException(message);
+                }
+                else
+                {
+                    _logger.LogInformation("Validating configuration settings");
+                    if (!_configuration.ValidateConfiguration(out configErrorMessage))
+                    {
+                        string message = "Error loading configuration: " + configErrorMessage;
+                        _logger.LogError(message);
+                        throw new InvalidDataException(message);
+                    }
+                    else hasConfig = true;
+                }
             }
         }
 
@@ -61,10 +78,8 @@ namespace Ecowitt
         private async Task<APIDeviceDetailData?> GetDeviceDetails(EcowittDeviceConfiguration configuredDevice)
         {
             if (!hasConfig) throw new InvalidOperationException("No configuration to get device details");            
-            EcowittDevice device = new EcowittDevice(configuredDevice, _configuration.APIKey, _configuration.ApplicationKey);
-            Console.WriteLine("Fetching device details for: " + device.Configuration.MAC + "\n ===");
-            var result = await device.GetDeviceInfo();            
-            //Console.WriteLine(dt.Result + "\n ===");
+            EcowittDevice device = new EcowittDevice(configuredDevice, _configuration.APIKey, _configuration.ApplicationKey);            
+            var result = await device.GetDeviceInfo(_logger);                        
             if (string.IsNullOrWhiteSpace(result)) return null;
             try
             {
@@ -73,25 +88,30 @@ namespace Ecowitt
                     json.RootElement.GetProperty("data"));
                 if (deviceDetailData != null)
                 {
-                    JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-                    var s = JsonSerializer.Serialize(deviceDetailData, options);
-                    Console.WriteLine(s);                        
+                    JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };                    
                 }
                 return deviceDetailData;
             }
             catch (JsonException ex)
             {
-                Console.WriteLine("Failed to deserialize device details. " + ex.Message);
+                _logger.LogWarning("Failed to deserialize device details. {exceptionMessage}",ex.Message);                
                 return null;
             }                        
         }
 
         public void RunProcessing(DataProcessingMode mode, bool initialRun = false)
         {
-            if (!hasConfig) throw new InvalidOperationException("No configuration to start processing");
-                        
-            if (mode == DataProcessingMode.Offline) RunOfflineProcessing();
-            if (mode == DataProcessingMode.Online) RunOnlineProcessing(initialRun);
+            using (_logger.BeginScope("{runid}", runId))
+            {
+                if (!hasConfig)
+                {
+                    string message = "No configuration to start processing";
+                    _logger.LogError(message);
+                    throw new InvalidOperationException(message);
+                }
+                if (mode == DataProcessingMode.Offline) RunOfflineProcessing();
+                if (mode == DataProcessingMode.Online) RunOnlineProcessing(initialRun);
+            }
         }
 
         private void RunOnlineProcessing(bool initialRun)
@@ -106,6 +126,7 @@ namespace Ecowitt
             for (int i=0; i<_configuration.ConfigurationSettings.Devices.Count; i++)
             {
                 var configuredDevice = _configuration.ConfigurationSettings.Devices[i];
+                _logger.LogInformation("Fetching device details for: {MAC}",configuredDevice.MAC);                    
                 var task = GetDeviceDetails(configuredDevice);             
                 detailsRequestTasks.Add(new (task,configuredDevice,i));
                 // rate throttling in API - 1 req / sec
@@ -121,11 +142,13 @@ namespace Ecowitt
                     var deviceDetails = task.Item1.Result;
                     if (deviceDetails == null || !deviceDetails.Validate())
                     {
-                        Console.WriteLine("Skipping device (no details or invalid device details) for: " + task.Item2.MAC);
+                        _logger.LogWarning("Skipping device (no details or invalid device details) for: {MAC}", task.Item2.MAC);
                         continue;
                     }
                     else
                     {
+                        _logger.LogInformation("Device details for: {MAC} Name: {name} Type: {type} Latitude: {lat} Longitude: {lon} Id: {id} Created: {created}",
+                            task.Item2.MAC, deviceDetails.Name, deviceDetails.StationType, deviceDetails.Latitude, deviceDetails.Longitude, deviceDetails.Id, deviceDetails.CreateTime);
                         verifiedDevices.Add(new (task.Item2,task.Item3));
                         if (!devicesDetails.ContainsKey(task.Item2.MAC)) devicesDetails.Add(task.Item2.MAC, deviceDetails);
                     }
@@ -133,7 +156,7 @@ namespace Ecowitt
             }
             if (!verifiedDevices.Any())
             {
-                Console.WriteLine("None of configured devices seems to be available");
+                _logger.LogWarning("None of configured devices seems to be available");
                 return;
             }
             // Now fetch the data for each device that has been confirmed to exist in the Ecowitt cloud using device configuration
@@ -147,7 +170,7 @@ namespace Ecowitt
                 }
                 var channelsList = sb.ToString().Trim(',');
                 EcowittDevice device = new EcowittDevice(configuredDevice.Item1, _configuration.APIKey, _configuration.ApplicationKey);
-                Console.WriteLine("Fetching data for device: " + device.Configuration.MAC + " Channels: " +channelsList );
+                _logger.LogInformation("Fetching data for device: {MAC} Channels: {channels}",device.Configuration.MAC, channelsList );
                 if (initialRun)
                 {
                     DateTime currentStartTime = startTime;
@@ -156,7 +179,7 @@ namespace Ecowitt
                     while (currentStartTime < endTime.AddDays(-1))
                     {
                         DataRequestTask drTask = new DataRequestTask();
-                        drTask.Task = device.ReadHistoricalData(currentStartTime, currentEndTime);                        
+                        drTask.Task = device.ReadHistoricalData(_logger, currentStartTime, currentEndTime);                        
                         drTask.Device = device;
                         drTask.ConfiguredDeviceIndex = configuredDevice.Item2;
                         drTask.requestIndex = idx;
@@ -167,7 +190,7 @@ namespace Ecowitt
                         Thread.Sleep(5000);
                     }
                     DataRequestTask lastTask = new DataRequestTask();
-                    lastTask.Task = device.ReadHistoricalData(currentStartTime, endTime);
+                    lastTask.Task = device.ReadHistoricalData(_logger, currentStartTime, endTime);
                     lastTask.Device = device;
                     lastTask.ConfiguredDeviceIndex = configuredDevice.Item2;
                     lastTask.requestIndex = idx;
@@ -176,7 +199,7 @@ namespace Ecowitt
                 else
                 {
                     DataRequestTask drTask = new DataRequestTask();
-                    drTask.Task = device.ReadHistoricalData(startTime, endTime);
+                    drTask.Task = device.ReadHistoricalData(_logger, startTime, endTime);
                     drTask.Device = device;
                     drTask.ConfiguredDeviceIndex = configuredDevice.Item2;
                     drTask.requestIndex = 0;
@@ -187,6 +210,7 @@ namespace Ecowitt
             }
             var tasksList = dataRequestTasks.Select(x => x.Task).ToArray();
             Task.WaitAll(tasksList);
+            _logger.LogInformation("All data requests completed");
             // sort data fetch results so they are properly sorted by requestIndex
             dataRequestTasks.Sort((a, b) =>
             {
@@ -200,6 +224,9 @@ namespace Ecowitt
                 return 1;
             });
             // Initialize output channels                        
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            _logger.LogInformation("Initializing output channels");
             Dictionary<string,IOutputChannel> outputChannels = new Dictionary<string,IOutputChannel>();
             foreach (var verifiedDevice in verifiedDevices)
             {
@@ -239,10 +266,9 @@ namespace Ecowitt
                             {
                                 outputChannel = new CSVFileOutputChannel(configuredOutputChannel.URL, meta, channelConfig);
                                 if (!outputChannel.InitChannel(out string errorMessage))
-                                {
-                                    var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
+                                {                                    
+                                    _logger.LogError("Error initializing channel: {channel} for device: {MAC} Error message: {errorMessage}",
                                         inputChannel, verifiedDevice.Item1.MAC, errorMessage);
-                                    Console.WriteLine(em);
                                     outputChannel = null;
                                 }
                                 break;
@@ -253,11 +279,10 @@ namespace Ecowitt
                                     new DefaultAzureCredential(_configuration.AzureCredential), 
                                     meta, channelConfig);
                                 if (!outputChannel.InitChannel(out string errorMessage))
-                                {
-                                    var em = string.Format("Error initializing channel: {0} for device: {1} Error message: {2}",
-                                        inputChannel, verifiedDevice.Item1.MAC, errorMessage);
+                                {                                    
                                     outputChannel = null;
-                                    Console.WriteLine(em);
+                                    _logger.LogError("Error initializing channel: {channel} for device: {MAC} Error message: {errorMessage}",
+                                        inputChannel, verifiedDevice.Item1.MAC, errorMessage);
                                 }
                                 break;
                             }
@@ -266,14 +291,19 @@ namespace Ecowitt
                                 var em = string.Format("This output channel type is not implemented yet. {0}",
                                     configuredOutputChannel.Type.ToString());
                                 //throw new NotImplementedException(em);
-                                Console.WriteLine(em);
+                                _logger.LogError(em);
                                 break;
                             }
                     }
                     if (outputChannel!=null) outputChannels.Add(id,outputChannel);
                 }
             }            
+            stopwatch.Stop();
+            _logger.LogInformation("{channelCount} output channels initialized in: {ElapsedMilliseconds} ms", 
+                outputChannels.Count, stopwatch.ElapsedMilliseconds);
             // Using fetched data send it to output channels
+            stopwatch.Restart();
+            _logger.LogInformation("Processing data");
             foreach (var task in dataRequestTasks)
             {
                 if (task.Task.IsCompleted)
@@ -287,10 +317,9 @@ namespace Ecowitt
                         dataInputChannels = inputData.GetChannels();
                     }
                     catch (Exception ex)
-                    {
-                        string em = string.Format("Failed to get input data for device: {0} . Error: {1}",
+                    {                        
+                        _logger.LogWarning("Failed to get input data for device: {MAC} . Error: {exceptionMessage}",
                             task.Device.Configuration.MAC, ex.Message);
-                        Console.WriteLine(em);
                         continue;
                     }
                     foreach (var channel in dataInputChannels)
@@ -303,22 +332,28 @@ namespace Ecowitt
                             outputChannel.AddData(inputChannel);
                         }
                         else
-                        {
-                            string em = string.Format("No valid output channel for device: {0} channel: {1}",
-                            task.Device.Configuration.MAC,channel.ChannelName);
-                            Console.WriteLine(em);
+                        {                                                   
+                            _logger.LogWarning("No valid output channel for device: {MAC} channel: {channel}",
+                                task.Device.Configuration.MAC, channel.ChannelName);
                         }
                     }                   
                 }
                 else
                 {
-                    Console.WriteLine("Failed to get data for device: " + task.Device.Configuration.MAC + " request id: " + task.requestIndex);
+                    _logger.LogWarning("Failed to get data for device: {MAC} task id: {taskId} ",
+                        task.Device.Configuration.MAC, task.requestIndex);
                 }                
             }
+            stopwatch.Stop();
+            _logger.LogInformation("Data processing completed in: {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
+            stopwatch.Restart();
+            _logger.LogInformation("Saving data");
             foreach (var outputChannel in outputChannels)
             {
                 outputChannel.Value.SaveData();
             }
+            stopwatch.Stop();
+            _logger.LogInformation("Data saved in: {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
         }
 
         private void RunOfflineProcessing()
